@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"8.0.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}};
+  </script>
+
+  <meta name="description" content="本篇文章借鉴自《深入浅出 vue.js》，根据该书中变化侦测的内容，对 vue 变化侦测的原理进行了文本梳理和理解">
+<meta property="og:type" content="article">
+<meta property="og:title" content="vue变化侦测">
+<meta property="og:url" content="http://example.com/2020/09/26/vue%E5%8F%98%E5%8C%96%E4%BE%A6%E6%B5%8B/index.html">
+<meta property="og:site_name" content="神烦大眼怪">
+<meta property="og:description" content="本篇文章借鉴自《深入浅出 vue.js》，根据该书中变化侦测的内容，对 vue 变化侦测的原理进行了文本梳理和理解">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-09-26T08:38:16.000Z">
+<meta property="article:modified_time" content="2021-01-19T14:03:45.455Z">
+<meta property="article:author" content="LiYue">
+<meta property="article:tag" content="小白">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="http://example.com/2020/09/26/vue%E5%8F%98%E5%8C%96%E4%BE%A6%E6%B5%8B/">
+
+
+<script data-pjax class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>vue变化侦测 | 神烦大眼怪</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="神烦大眼怪" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">神烦大眼怪</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-schedule">
+
+    <a href="/schedule/" rel="section"><i class="fa fa-calendar fa-fw"></i>日程表</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%98%E5%8C%96%E4%BE%A6%E6%B5%8B"><span class="nav-number">1.</span> <span class="nav-text"> 变化侦测</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E8%BF%BD%E8%B8%AA%E5%8F%98%E5%8C%96"><span class="nav-number">2.</span> <span class="nav-text"> 如何追踪变化？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E6%94%B6%E9%9B%86%E4%BE%9D%E8%B5%96"><span class="nav-number">3.</span> <span class="nav-text"> 如何收集依赖？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BE%9D%E8%B5%96%E6%94%B6%E9%9B%86%E5%9C%A8%E5%93%AA"><span class="nav-number">4.</span> <span class="nav-text"> 依赖收集在哪？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BE%9D%E8%B5%96%E6%98%AF%E8%B0%81"><span class="nav-number">5.</span> <span class="nav-text"> 依赖是谁？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%98%AFwatcher"><span class="nav-number">6.</span> <span class="nav-text"> 什么是 Watcher？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%92%E5%BD%92%E6%89%80%E6%9C%89%E7%9A%84key%E5%B1%9E%E6%80%A7"><span class="nav-number">7.</span> <span class="nav-text"> 递归所有的 key（属性）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B3%E4%BA%8Eobject%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-number">8.</span> <span class="nav-text"> 关于 Object 的问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">9.</span> <span class="nav-text"> 总结</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="LiYue"
+      src="/images/yuki.jpg">
+  <p class="site-author-name" itemprop="name">LiYue</p>
+  <div class="site-description" itemprop="description">干就vans！</div>
+</div>
+
+
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/CathLee" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;CathLee" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2020/09/26/vue%E5%8F%98%E5%8C%96%E4%BE%A6%E6%B5%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/yuki.jpg">
+      <meta itemprop="name" content="LiYue">
+      <meta itemprop="description" content="干就vans！">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="神烦大眼怪">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          vue变化侦测
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2020-09-26 16:38:16" itemprop="dateCreated datePublished" datetime="2020-09-26T16:38:16+08:00">2020-09-26</time>
+    </span>
+      <span class="post-meta-item">
+        <span class="post-meta-item-icon">
+          <i class="far fa-calendar-check"></i>
+        </span>
+        <span class="post-meta-item-text">更新于</span>
+        <time title="修改时间：2021-01-19 22:03:45" itemprop="dateModified" datetime="2021-01-19T22:03:45+08:00">2021-01-19</time>
+      </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%AD%A6%E4%B9%A0%E4%B9%8B%E8%B7%AF/" itemprop="url" rel="index"><span itemprop="name">学习之路</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>本篇文章借鉴自《深入浅出 vue.js》，根据该书中变化侦测的内容，对 vue 变化侦测的原理进行了文本梳理和理解</p>
+ <a id="more"></a>
+<h2 id="变化侦测"><a class="markdownIt-Anchor" href="#变化侦测">#</a> 变化侦测</h2>
+<p>什么是变化侦测？</p>
+<p>页面在渲染的过程中，状态发生不同的变化，变化侦测就是这样的一个存在，<strong>确定在渲染过程中状态发生了什么</strong>。</p>
+<p>对于 Angulars 和 React，他们变化侦测的方式更像是__“拉”__。</p>
+<p>什么叫拉呢？ 我觉得吧，就像是一棵苹果树，摘苹果的时候，你从树顶上去 &quot; 拉 “他，从最上面开始摘，顺着树枝的节点，依次向下摘。</p>
+<p>Angular 和 React 的状态发生变化的时候，他们都不知道是谁突然变化 ，没有办法只好 通过” 拉 “的方式，通过<strong>暴力比对</strong>的方式来查找。 在 Angular 里，他选择了<strong>脏检查</strong>的办法，而在 React 他选择<strong>虚拟 DOM</strong> 的方法，二者都是在 **“拉”** 的基础上进行。</p>
+<p>但我今天看到书是《深入浅出 Vue.js》，说明 Vue 和以上二者都不太一样，他选择的是一种 **“推”** 的方法。</p>
+<p>那么什么叫 “推”？同样和苹果数一样，“推” 就是把从下往上，一个苹果被摘了，我们就顺着这枝桠向上进行摘取，知道把这个枝桠的苹果摘完。</p>
+<p>在 Vue 里，当状态发生改变的时候，vue 就马上知道了，并且在一定程度上，知道了，是哪些状态发生了变化。<strong>这样的状态变更信息他知道的更多之后，他就可以进行细粒度的更新了</strong></p>
+<p>__什么叫细粒度的更新？__就是：<em>假如说有一个状态绑定了好多个依赖，每一个依赖表示一个具体的 DOM 节点，那么当这个状态发生改变的时候，对这个状态的所有依赖发出通知，让他们进行 DOM 的更新操作</em>。</p>
+<h2 id="如何追踪变化"><a class="markdownIt-Anchor" href="#如何追踪变化">#</a> 如何追踪变化？</h2>
+<p>作者说，学过 js 的都知道有两种方法都知道，侦测变化的方法有两种:</p>
+<ul>
+<li>Object.definProperty</li>
+<li>ES6 的 Proxy</li>
+</ul>
+<p>我好惭愧，我不知道。。。（i am so vegetable）, 但还好，我会百度和 google。</p>
+<p>废话不多说，直接讲原理：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">defineReactive</span>(<span class="params">data, key, val</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">Object</span>.defineProperty(data, key, &#123;</span><br><span class="line">        enumerable: <span class="literal">true</span>,<span class="comment">//可枚举嘛？</span></span><br><span class="line">        configurable: <span class="literal">true</span>,<span class="comment">//可配置嘛？</span></span><br><span class="line">        get: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> val;</span><br><span class="line">        &#125;,</span><br><span class="line">        set: <span class="function"><span class="keyword">function</span> (<span class="params">newVal</span>) </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (val === newVal) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            val = newVal;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>defineProperty(data,key,descriptor)</code>  干什么的？<strong>侦测对象变化！</strong>（扣题欸！！）</p>
+<p><code>defineReactive(data,key,val)</code>  干嘛的？一看就是定义一个响应式数据嘛～</p>
+<p>把函数的存取 <code>val</code>  的方式封装是为什么？我觉得吧，是因为，在你取一个值的时候，存一个值的时候会有耦合，通过上述代码，会更清晰明确一点（反正我是这样想的）。</p>
+<h2 id="如何收集依赖"><a class="markdownIt-Anchor" href="#如何收集依赖">#</a> 如何收集依赖？</h2>
+<p>如果只是讲封装的 <code>defineReactive(data,key,val)</code> ，那明显不清楚我们侦测的原理是什么嘛，我们更在意的是 ------- 这么做到的？怎么收集到依赖的？</p>
+<p>因为我们观察数据，目的是为了，当数据发生变化的时候，可以通知哪些用过他的地方，进行修改。</p>
+<p>__所以收集依赖的核心是什么？__就是把使用过数据的地方都收集起来，他们怎么使用的？–通过 getter 对咩？  那就好说啦～。<strong>简单来说就是：通过 getter 收集依赖，然后再通过 setter 依次循环依赖，再触发一遍</strong></p>
+<h2 id="依赖收集在哪"><a class="markdownIt-Anchor" href="#依赖收集在哪">#</a> 依赖收集在哪？</h2>
+<p>首先我们想到，每个 key（属性）都有自己的值，这个值，会别很多人（依赖）取来用，那么这些个依赖的集合，是专属于当前 key（属性）的，那么我们可以大胆猜想，<strong>是不是存在一个数组 <code>dep[]</code>  专门来收集这个属性的依赖，且这些个依赖的集合 dep 被存在 <code>window.target</code>  上面呢？</strong></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">definedReactive</span>(<span class="params">data, key, val</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">let</span> dep = [];<span class="comment">//******** *新增数组dep用来存储被收集的依赖/</span></span><br><span class="line">    <span class="built_in">Object</span>.defineProperty(data, key, &#123;</span><br><span class="line">        enumerable: <span class="literal">true</span>,</span><br><span class="line">        configurable: <span class="literal">true</span>,</span><br><span class="line">        get: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">            dep.push(<span class="built_in">window</span>.target);<span class="comment">//******* */</span></span><br><span class="line">            <span class="keyword">return</span> val;</span><br><span class="line">        &#125;,</span><br><span class="line">        set: <span class="function"><span class="keyword">function</span> (<span class="params">newVal</span>) </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (val === newVal) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; dep.length; i++) &#123;</span><br><span class="line">                dep[i](newVal, val);</span><br><span class="line">                <span class="comment">//set被触发的时，循环dep，触发之前收集到的依赖，进行数据修改</span></span><br><span class="line">            &#125;<span class="comment">//******* */</span></span><br><span class="line">            val = newVal;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>但这样写，还是耦合了，我们试试看，写一个专门的类，叫做	 <code>Dep</code> , 专门为我们来管理依赖们</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="class"><span class="keyword">class</span> <span class="title">Dep</span></span>&#123;</span><br><span class="line">    <span class="keyword">constructor</span>()&#123;</span><br><span class="line">        <span class="built_in">this</span>.sub = [];</span><br><span class="line">    &#125;</span><br><span class="line">    addSub(subb)&#123;</span><br><span class="line">        <span class="built_in">this</span>.sub.push(subb);</span><br><span class="line">    &#125;</span><br><span class="line">    removeSub(subbb)&#123;</span><br><span class="line">        remove(<span class="built_in">this</span>.sub,subbb);</span><br><span class="line">    &#125;</span><br><span class="line">    depend()&#123;</span><br><span class="line">        <span class="keyword">if</span>(<span class="built_in">window</span>.target)&#123;</span><br><span class="line">            <span class="built_in">this</span>.addSub(<span class="built_in">window</span>.target);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//通知：大家伙们~，数据改啦！！</span></span><br><span class="line">    notify()&#123;</span><br><span class="line">        <span class="keyword">const</span> subs = <span class="built_in">this</span>.sub.slice();</span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">0</span>,l = subs.length;i&lt;l;i++)&#123;</span><br><span class="line">            subs[i].update();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">remove</span>(<span class="params">arr,item</span>)</span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(arr.length)&#123;</span><br><span class="line">        <span class="keyword">const</span> index = arr.indexOf(item);</span><br><span class="line">        <span class="keyword">if</span>(index =<span class="number">-1</span>)&#123;</span><br><span class="line">            <span class="keyword">return</span> arr.splice(index,<span class="number">1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>于是之前的 <code>definReactive</code>  变成</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">definedReactive</span>(<span class="params">data, key, val</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">let</span> dep = Dep();<span class="comment">///***** */</span></span><br><span class="line">    <span class="built_in">Object</span>.defineProperty(data, key, &#123;</span><br><span class="line">        enumerable: <span class="literal">true</span>,</span><br><span class="line">        configurable: <span class="literal">true</span>,</span><br><span class="line">        get: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> val;</span><br><span class="line">            dep.depend();<span class="comment">//**** */</span></span><br><span class="line">        &#125;,</span><br><span class="line">        set: <span class="function"><span class="keyword">function</span> (<span class="params">newVal</span>) </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (val === newVal) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            dep.notify();<span class="comment">//***** */</span></span><br><span class="line">            val = newVal;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这样就回答了 ：依赖在哪？------Dep 里（扣题～）</p>
+<h2 id="依赖是谁"><a class="markdownIt-Anchor" href="#依赖是谁">#</a> 依赖是谁？</h2>
+<p>在上面的代码里，我们收集的依赖是 <code>window.target</code> ，那么他到底长什么样？我们到底要收集谁呢？</p>
+<p>收集谁？归根结底，就是，你状态发生改变，你要通知谁？</p>
+<p>通知的东西就很多啦啊？有可能是模板，或者说，用户自己写的一个 watch，这些个东西太多了，所以我们就想，是不是要写一个类来管理，这个类用来通知这些对象。这样的话，<strong>我们收集依赖的时候，只需要把这个类引进来，然后他来通知其他地方</strong>。</p>
+<p>我们姑且叫这个类为 <code>Watcher</code></p>
+<p>所以依赖是谁？----<strong>Watcher</strong></p>
+<h2 id="什么是watcher"><a class="markdownIt-Anchor" href="#什么是watcher">#</a> 什么是 Watcher？</h2>
+<p>watcher 是一个中介角色，数据发生变化的时候，通知他，然后他在通知其他地方。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 关于watcher的例子</span></span><br><span class="line">vm.$watch(<span class="string">&#x27;a.b.c&#x27;</span>,<span class="function"><span class="keyword">function</span>(<span class="params">newVal,oldVal</span>)</span>&#123;</span><br><span class="line">    <span class="comment">//做点什么</span></span><br><span class="line">&#125;)</span><br><span class="line"><span class="comment">//这段代码表示当某个data 的 &#x27;a.b.c&#x27;属性发生改变的时候，触发第二个函数</span></span><br></pre></td></tr></table></figure>
+<p>我们思考一下是怎么实现这个功能的，可以猜测，是不是，把 <code>watcher</code>  的实例添加到 <code>a.b.c</code>  属性里，然后属性里值变化时通知 <code>watcher</code> , 然后他再通知给别人。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">export</span> <span class="keyword">default</span> <span class="class"><span class="keyword">class</span> <span class="title">Watcher</span></span>&#123;</span><br><span class="line">    <span class="keyword">constructor</span> (vm,expOrFn,cb)&#123;</span><br><span class="line">        <span class="built_in">this</span>.vm = vm ;</span><br><span class="line">        <span class="comment">//执行this.getter(),就可以读取“data.a.b.c”里面的内容</span></span><br><span class="line">        <span class="built_in">this</span>.getter = parsePath(expOrFn);</span><br><span class="line">        <span class="built_in">this</span>.cb = cb;</span><br><span class="line">        <span class="built_in">this</span>.value = <span class="built_in">this</span>.get();</span><br><span class="line">    &#125;</span><br><span class="line">    get()&#123;</span><br><span class="line">        <span class="built_in">window</span>.target = <span class="built_in">this</span>;</span><br><span class="line">        <span class="keyword">let</span> value = <span class="built_in">this</span>.getter.call(<span class="built_in">this</span>.vm,<span class="built_in">this</span>.vm);</span><br><span class="line">        <span class="built_in">window</span>.target = <span class="literal">undefined</span>;</span><br><span class="line">        <span class="keyword">return</span> value;</span><br><span class="line">    &#125;</span><br><span class="line">    update()&#123;</span><br><span class="line">        <span class="keyword">const</span> oldValue = <span class="built_in">this</span>.value;</span><br><span class="line">        <span class="built_in">this</span>.value = <span class="built_in">this</span>.get();</span><br><span class="line">        <span class="built_in">this</span>.cb.call(<span class="built_in">this</span>.vm,<span class="built_in">this</span>.value,oldValue)</span><br><span class="line">    &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这段代码可以把自己加进 <code>data.a.b.c</code>  的 Dep 中去</p>
+<p>为什么？</p>
+<p><strong>因为，在 <code>get</code>  方法里，我把 <code>window.target = this,</code> ，也就是说：this 所指的当前 watcher 实例（也就是依赖）被我变成了 <code>window.target</code> </strong></p>
+<p><strong>然后在读取 data.a.b.c 属性的值的时候，我们肯定会触发 getter（），触发 getter，说明触发了收集依赖的逻辑，关于收集依赖的逻辑，我们上述说过，会在 <code>window.target</code>  里面读取一个依赖并添加到 <code>dep</code>  里。</strong></p>
+<p><strong>这就导致，只要 <code>window.target = this</code>  然后在读取一下值，就会主动把这个 this（watcher 实例 ===》依赖）添加到 dep 收集依赖的数组里。</strong></p>
+<p>依赖注入到 <code>dep</code>  里面后，每当 <code>data.a.b.c</code>  的值发生了变化时，就会让依赖列表的所有依赖循环触发，自己所含有的 update（）方法。</p>
+<h2 id="递归所有的key属性"><a class="markdownIt-Anchor" href="#递归所有的key属性">#</a> 递归所有的 key（属性）</h2>
+<p>上述讲的只是怎么实现一个属性的变化侦测。</p>
+<p>但我们希望把数据里面的所有属性（包括子属性）都侦测到，所以需要封装一个 Observe 类，<strong>他的任务时，把一个数据里面的所有属性都转化成  getter/setter 的形式。</strong></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Observer会附加在每一个被侦测的Object对象上</span></span><br><span class="line"><span class="comment"> * 一旦被附加，Observe会把Object的所有属性转换成getter/setter</span></span><br><span class="line"><span class="comment"> * 来收集属性的依赖，并且当属性发生变化时，会通知这些依赖</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">export</span> <span class="class"><span class="keyword">class</span> <span class="title">Observer</span> </span>&#123;</span><br><span class="line">    <span class="keyword">constructor</span>(value) &#123;</span><br><span class="line">        <span class="built_in">this</span>.value = value;</span><br><span class="line">        <span class="keyword">if</span> (!<span class="built_in">Array</span>.isArray(value)) &#123;</span><br><span class="line">            <span class="built_in">this</span>.walk(value);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/** </span></span><br><span class="line"><span class="comment">     * walk()会将每一个属性转换成setter/getter的行式来侦测变化</span></span><br><span class="line"><span class="comment">     * 这个方法只有在数据类型为Object时调用</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    walk(obj) &#123;</span><br><span class="line">        <span class="keyword">const</span> keys = <span class="built_in">Object</span>.keys(obj);<span class="comment">//一个表示给定对象的所有可枚举属性的字符串数组。</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; keys.length; i++) &#123;</span><br><span class="line">            definedReactive(obj, keys[i], obj[keys[i]]);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">definedReactive</span>(<span class="params">data, key, val</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">typeof</span> val === <span class="string">&#x27;object&#x27;</span>) &#123;</span><br><span class="line">        <span class="keyword">new</span> Observer(val);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">let</span> dep = <span class="keyword">new</span> Dep();</span><br><span class="line"></span><br><span class="line">    <span class="built_in">Object</span>.defineProperty(data, key, &#123;</span><br><span class="line">        enumerable: <span class="literal">true</span>,</span><br><span class="line">        configurable: <span class="literal">true</span>,</span><br><span class="line">        get: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">            dep.depend();</span><br><span class="line">            <span class="keyword">return</span> val;</span><br><span class="line">        &#125;,</span><br><span class="line">        set: <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (val === newVal) &#123;</span><br><span class="line">                <span class="keyword">return</span></span><br><span class="line">            &#125;</span><br><span class="line">            val = newVal;</span><br><span class="line">            dep.notify();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="关于object的问题"><a class="markdownIt-Anchor" href="#关于object的问题">#</a> <strong>关于 Object 的问题</strong></h2>
+<p>前面介绍了 Object 类型的变化侦测原理，了解了数据的变化是通过 getter/setter 来追踪的，</p>
+<p>但也正是由于这种方式，有些语法里即使是数据发生了变化，vue 也追踪不到</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> vm = <span class="keyword">new</span> Vue(&#123;</span><br><span class="line">    el:<span class="string">&#x27;#el&#x27;</span>,</span><br><span class="line">    tempalte:<span class="string">&#x27;#demo-template&#x27;</span>,</span><br><span class="line">    methods:&#123;</span><br><span class="line">        action:<span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">            <span class="built_in">this</span>.obj.name = <span class="string">&quot;awsl&quot;</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">  data:&#123;</span><br><span class="line">      obj:&#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;)<span class="comment">//vue无法侦察</span></span><br></pre></td></tr></table></figure>
+<p>或者说</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> vm = <span class="keyword">new</span> Vue(&#123;</span><br><span class="line">    el:<span class="string">&#x27;#el&#x27;</span>,</span><br><span class="line">    tempalte:<span class="string">&#x27;#demo-template&#x27;</span>,</span><br><span class="line">    methods:&#123;</span><br><span class="line">        action:<span class="function"><span class="keyword">function</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">            <span class="keyword">delete</span> <span class="built_in">this</span>.obj.name;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">  data:&#123;</span><br><span class="line">      obj:&#123;<span class="attr">name</span>:<span class="string">&#x27;awsl&#x27;</span>&#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;)<span class="comment">//vue无法侦察</span></span><br></pre></td></tr></table></figure>
+<p>vue 都无法察觉数据变化</p>
+<h2 id="总结"><a class="markdownIt-Anchor" href="#总结">#</a> 总结</h2>
+<ul>
+<li>变化侦测就是侦测数据的变化</li>
+<li>Object 可以通过 <code>Object.definProperty </code> 将属性转换成 settet/getter 的行式，读取数据的时候触发 getter，存储数据 的时候触发 setter；</li>
+<li>Dep 收集依赖，Watcher 就是依赖，数据变化，通知他。然后遍历 Dep 里的依赖，实现其他依赖的数据更新。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+          <div class="post-tags">
+              <a href="/tags/%E5%B0%8F%E7%99%BD/" rel="tag"># 小白</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+            </div>
+            <div class="post-nav-item">
+                <a href="/2021/01/19/%E5%A6%82%E4%BD%95%E5%9C%A8vue%E9%87%8C%E5%BC%95%E5%85%A5Bootstrap/" rel="next" title="如何在vue里引入Bootstrap">
+                  如何在vue里引入Bootstrap <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">LiYue</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@next-theme/pjax@0.4.0/pjax.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '.page-configurations',
+    '.main-inner',
+    '.post-toc-wrap',
+    '.languages',
+    '.pjax'
+  ],
+  analytics: false,
+  cacheBust: false,
+  scrollRestoration: false,
+  scrollTo: !CONFIG.bookmark.enable
+});
+
+document.addEventListener('pjax:success', () => {
+  pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  const hasTOC = document.querySelector('.post-toc');
+  document.querySelector('.sidebar-inner').classList.toggle('sidebar-nav-active', hasTOC);
+  document.querySelector(hasTOC ? '.sidebar-nav-toc' : '.sidebar-nav-overview').click();
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+    <div class="pjax">
+  
+
+  
+
+    </div>
+</body>
+</html>
