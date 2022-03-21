@@ -8,9 +8,16 @@
     <author>
       <name>神烦大眼怪</name>
     </author>
-    <updated>2022-03-21T05:08:08.000Z</updated>
+    <updated>2022-03-21T05:12:55.000Z</updated>
     <category term="Peace" />
     <category term="Love" />
+    <entry>
+        <id>https://cathlee.github.io/webworker/</id>
+        <title>webworker</title>
+        <link rel="alternate" href="https://cathlee.github.io/webworker/"/>
+        <content type="html"></content>
+        <updated>2022-03-21T05:12:55.000Z</updated>
+    </entry>
     <entry>
         <id>https://cathlee.github.io/vue/</id>
         <title>vue</title>
@@ -38,7 +45,7 @@
 &lt;h4 id=&#34;一-dns如何查找对应的ip地址的&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#一-dns如何查找对应的ip地址的&#34;&gt;#&lt;/a&gt; 一、dns 如何查找对应的 ip 地址的？&lt;/h4&gt;
 &lt;p&gt;首先会查找自身缓存中是否存在该 dns 解析后的 ip 地址，若无，便会去其操作系统的 host 文件中去查找对应的字段，若还未命中则，下述操作便会被执行。&lt;/p&gt;
 &lt;p&gt;若 dns 域名对应的 ip 未存到缓存之中，其查找过程如下：&lt;/p&gt;
-&lt;p&gt;&lt;img data-src=&#34;C:%5CUsers%5C44793%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20220321093903564.png&#34; alt=&#34;image-20220321093903564&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20220321093903564.png&#34; alt=&#34;image-20220321093903564&#34;&gt;&lt;/p&gt;
 &lt;p&gt;上述过程中，从本地域名到最终的 google.com 域名为一个迭代查询的过程。但在其迭代查询过程之前，会有一个递归查询 -- 即上述提到的本地 host 文件查询，查找是否存在当前域名的 ip 地址。&lt;/p&gt;
 &lt;h4 id=&#34;二-浏览器是如何进行渲染的&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#二-浏览器是如何进行渲染的&#34;&gt;#&lt;/a&gt; 二、浏览器是如何进行渲染的？&lt;/h4&gt;
 &lt;p&gt;浏览器进行渲染时，会调用 render 进程（renderer process），其包含如下相关线程：&lt;/p&gt;
@@ -49,11 +56,11 @@
 &lt;li&gt;光栅线程 Raster thread&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;其工作流程如下：&lt;/p&gt;
-&lt;p&gt;&lt;img data-src=&#34;C:%5CUsers%5C44793%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20220321101325689.png&#34; alt=&#34;image-20220321101325689&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20220321101325689.png&#34; alt=&#34;image-20220321101325689&#34;&gt;&lt;/p&gt;
 &lt;p&gt;简而言之， &lt;code&gt;html文件-&amp;gt;dom树&lt;/code&gt; ， &lt;code&gt;css-&amp;gt;cssdom&lt;/code&gt;  树，二者结合成 &lt;code&gt;render tree&lt;/code&gt; , 而后，render tree 根据计算渲染对象信息，计算出每个渲染对象的位置和尺寸，进而形成 &lt;code&gt;layout tree&lt;/code&gt;&lt;/p&gt;
-&lt;p&gt;&lt;img data-src=&#34;C:%5CUsers%5C44793%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20220321101723642.png&#34; alt=&#34;image-20220321101723642&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20220321101723642.png&#34; alt=&#34;image-20220321101723642&#34;&gt;&lt;/p&gt;
 &lt;p&gt;除此之外，浏览器还将记录下不同元素的绘制顺序，以便正确的绘制整个页面。而这一过程，浏览器将会通过遍历上述的 layout tree 来实现，生成的绘制顺序框图，我们称之为 &lt;code&gt;Draw Rect&lt;/code&gt; 。&lt;/p&gt;
-&lt;p&gt;&lt;img data-src=&#34;C:%5CUsers%5C44793%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20220321102123565.png&#34; alt=&#34;image-20220321102123565&#34;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20220321102123565.png&#34; alt=&#34;image-20220321102123565&#34;&gt;&lt;/p&gt;
 &lt;p&gt;而后涉及到的知识便会略显生涩，如，我们在拿到对应的布局树（layout tree）和绘制顺序（Paint Records）之后，我们将其两个步骤进行复合，得到对应的 LayerTree (图层树)，并对其栅格化处理，交由 GPU 进程进行处理，而后 GPU 通过 &lt;code&gt;IPC协议&lt;/code&gt; 将相关消息发送到浏览器进程，进行页面渲染。&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;总结&lt;/strong&gt;：生成各种树，包括 dom tree, css tree, layout tree, layer true, render tree，这些是 &lt;code&gt;渲染器进程&lt;/code&gt; 中的 &lt;code&gt;GUI渲染线程&lt;/code&gt; 做的事。其中 js 脚本的解析执行是同进程下的 js 引擎线程来做的，也就是大名鼎鼎的 &lt;code&gt;V8引擎&lt;/code&gt; 。至于定时器回调，是 &lt;code&gt;定时器线程&lt;/code&gt; 来计数，计数完毕会把回调推入事件触发线程维护的 &lt;code&gt;任务队列&lt;/code&gt; ，当 js 线程空闲并且此线程维护的微任务队列无事件，才会去任务队列拿 &lt;code&gt;宏任务&lt;/code&gt; 执行处理。)&lt;/p&gt;
 </content>
