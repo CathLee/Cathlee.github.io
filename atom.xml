@@ -12,18 +12,95 @@
     <category term="Peace" />
     <category term="Love" />
     <entry>
-        <id>https://cathlee.github.io/webworker/</id>
-        <title>webworker</title>
-        <link rel="alternate" href="https://cathlee.github.io/webworker/"/>
-        <content type="html"></content>
+        <id>https://cathlee.github.io/performance%20optimization/</id>
+        <title>所谓的前端性能优化手段</title>
+        <link rel="alternate" href="https://cathlee.github.io/performance%20optimization/"/>
+        <content type="html">&lt;h2 id=&#34;前言&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#前言&#34;&gt;#&lt;/a&gt; 前言&lt;/h2&gt;
+&lt;p&gt;春招八股基本上都靠背的，许多面试官提到我的一个通病就是项目经验少 + 知识点深度不够。&lt;/p&gt;
+&lt;p&gt;故本文主要是针对自我的知识薄弱点进行总结。&lt;/p&gt;
+&lt;h4 id=&#34;1前端常见的的性能优化有哪些&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#1前端常见的的性能优化有哪些&#34;&gt;#&lt;/a&gt; 1. 前端常见的的性能优化有哪些？&lt;/h4&gt;
+&lt;p&gt;遇到问题首先要知道问题是什么我们才能做好问题的解决，同样，性能优化也是如此，我们要知道是哪些层面的执行速度效率过低，才导致我们的页面看起来特别 &amp;quot;慢&amp;quot;。&lt;/p&gt;
+&lt;h5 id=&#34;性能分析方法&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#性能分析方法&#34;&gt;#&lt;/a&gt; 性能分析方法：&lt;/h5&gt;
+&lt;ul&gt;
+&lt;li&gt;查看 NetWork 面板中的&lt;strong&gt; WaterFall&lt;/strong&gt;，看其宽度和长度是否过大，进一步分析如下指标：&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img data-src=&#34;image-20220320201444214.png&#34; alt=&#34;image-20220320201444214&#34;&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;查看 performance 中的 Timings 中的 LCP/FCP 是否过长，以及饼状图中的各个占比来定位性能缺陷。
+&lt;ul&gt;
+&lt;li&gt;采用 &lt;code&gt;PerformanceNavigationTiming&lt;/code&gt;  接口&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;排查包中的一些无用模块
+&lt;ul&gt;
+&lt;li&gt;采用 &lt;code&gt;webpack-bundle-analyzer&lt;/code&gt;  包分析工具&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h5 id=&#34;优化手段&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#优化手段&#34;&gt;#&lt;/a&gt; 优化手段：&lt;/h5&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Tree Shaking (基于 ESM 来摇掉无用的代码)&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;使用方法：在 webpack 的产出结果 bundle 包中，调用 isEmpty 方法，减少我们包的大小&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;figure class=&#34;highlight js&#34;&gt;&lt;figcaption data-lang=&#34;JavaScript&#34;&gt;&lt;/figcaption&gt;&lt;table&gt;&lt;tr&gt;&lt;td data-num=&#34;1&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token keyword&#34;&gt;import&lt;/span&gt; _isEmpty &lt;span class=&#34;token keyword&#34;&gt;from&lt;/span&gt; &lt;span class=&#34;token string&#34;&gt;&#39;lodash/isEmpty&#39;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;注：在 webpack4.x 中默认对 tree-shaking 进行了支持。 在 webpack2.x 中使用 tree-shaking；&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;split chunks（分包）&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;webpack4.x 已执行只能代码分包&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;按需加载（多到麻脑壳...）&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;gzip&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;服务端配置 gzip 压缩后可以大大缩减资源大小&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;eg:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;figure class=&#34;highlight nginx&#34;&gt;&lt;figcaption data-lang=&#34;nginx&#34;&gt;&lt;/figcaption&gt;&lt;table&gt;&lt;tr&gt;&lt;td data-num=&#34;1&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token directive&#34;&gt;&lt;span class=&#34;token keyword&#34;&gt;nginx中进行配置&lt;/span&gt;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;2&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;http &lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;3&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;  &lt;span class=&#34;token directive&#34;&gt;&lt;span class=&#34;token keyword&#34;&gt;gzip&lt;/span&gt; &lt;span class=&#34;token boolean&#34;&gt;on&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;4&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;  &lt;span class=&#34;token directive&#34;&gt;&lt;span class=&#34;token keyword&#34;&gt;gzip_buffers&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;32&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;4K&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;5&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;  &lt;span class=&#34;token directive&#34;&gt;&lt;span class=&#34;token keyword&#34;&gt;gzip_comp_level&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;6&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;6&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;  &lt;span class=&#34;token directive&#34;&gt;&lt;span class=&#34;token keyword&#34;&gt;gzip_min_length&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;100&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;7&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;  &lt;span class=&#34;token directive&#34;&gt;&lt;span class=&#34;token keyword&#34;&gt;gzip_types&lt;/span&gt; application/javascript text/css text/xml&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;8&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;  &lt;span class=&#34;token directive&#34;&gt;&lt;span class=&#34;token keyword&#34;&gt;gzip_disable&lt;/span&gt; &lt;span class=&#34;token string&#34;&gt;&#34;MSIE [1-6]\.&#34;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;9&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;  &lt;span class=&#34;token directive&#34;&gt;&lt;span class=&#34;token keyword&#34;&gt;gzip_vary&lt;/span&gt; &lt;span class=&#34;token boolean&#34;&gt;on&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;10&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;11&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;12&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;作者：黑色的枫&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;13&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;链接：https://juejin.cn/post/6904517485349830670&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;14&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;来源：稀土掘金&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;15&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;图片压缩&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;图片分割&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;sprite 雪碧图&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;小图片合并为一张大的图片，然后通过 background 分割到需要展示的图片&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;CDN&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;懒加载&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+</content>
+        <category term="春招面试高频" scheme="https://cathlee.github.io/categories/%E6%98%A5%E6%8B%9B%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91/" />
+        <category term="性能优化手段" scheme="https://cathlee.github.io/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%89%8B%E6%AE%B5/" />
         <updated>2022-03-21T05:12:55.000Z</updated>
-    </entry>
-    <entry>
-        <id>https://cathlee.github.io/vue/</id>
-        <title>vue</title>
-        <link rel="alternate" href="https://cathlee.github.io/vue/"/>
-        <content type="html"></content>
-        <updated>2022-03-21T05:08:08.000Z</updated>
     </entry>
     <entry>
         <id>https://cathlee.github.io/js/</id>

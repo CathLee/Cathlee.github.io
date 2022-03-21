@@ -7,20 +7,15 @@
     "home_page_url": "https://cathlee.github.io",
     "items": [
         {
-            "id": "https://cathlee.github.io/webworker/",
-            "url": "https://cathlee.github.io/webworker/",
-            "title": "webworker",
+            "id": "https://cathlee.github.io/performance%20optimization/",
+            "url": "https://cathlee.github.io/performance%20optimization/",
+            "title": "所谓的前端性能优化手段",
             "date_published": "2022-03-21T05:12:55.000Z",
-            "content_html": "",
-            "tags": []
-        },
-        {
-            "id": "https://cathlee.github.io/vue/",
-            "url": "https://cathlee.github.io/vue/",
-            "title": "vue",
-            "date_published": "2022-03-21T05:08:08.000Z",
-            "content_html": "",
-            "tags": []
+            "content_html": "<h2 id=\"前言\"><a class=\"anchor\" href=\"#前言\">#</a> 前言</h2>\n<p>春招八股基本上都靠背的，许多面试官提到我的一个通病就是项目经验少 + 知识点深度不够。</p>\n<p>故本文主要是针对自我的知识薄弱点进行总结。</p>\n<h4 id=\"1前端常见的的性能优化有哪些\"><a class=\"anchor\" href=\"#1前端常见的的性能优化有哪些\">#</a> 1. 前端常见的的性能优化有哪些？</h4>\n<p>遇到问题首先要知道问题是什么我们才能做好问题的解决，同样，性能优化也是如此，我们要知道是哪些层面的执行速度效率过低，才导致我们的页面看起来特别 &quot;慢&quot;。</p>\n<h5 id=\"性能分析方法\"><a class=\"anchor\" href=\"#性能分析方法\">#</a> 性能分析方法：</h5>\n<ul>\n<li>查看 NetWork 面板中的<strong> WaterFall</strong>，看其宽度和长度是否过大，进一步分析如下指标：</li>\n</ul>\n<p><img data-src=\"image-20220320201444214.png\" alt=\"image-20220320201444214\"></p>\n<ul>\n<li>查看 performance 中的 Timings 中的 LCP/FCP 是否过长，以及饼状图中的各个占比来定位性能缺陷。\n<ul>\n<li>采用 <code>PerformanceNavigationTiming</code>  接口</li>\n</ul>\n</li>\n<li>排查包中的一些无用模块\n<ul>\n<li>采用 <code>webpack-bundle-analyzer</code>  包分析工具</li>\n</ul>\n</li>\n</ul>\n<h5 id=\"优化手段\"><a class=\"anchor\" href=\"#优化手段\">#</a> 优化手段：</h5>\n<ol>\n<li>\n<p>Tree Shaking (基于 ESM 来摇掉无用的代码)</p>\n<ul>\n<li>\n<p>使用方法：在 webpack 的产出结果 bundle 包中，调用 isEmpty 方法，减少我们包的大小</p>\n</li>\n<li>\n<figure class=\"highlight js\"><figcaption data-lang=\"JavaScript\"></figcaption><table><tr><td data-num=\"1\"></td><td><pre><span class=\"token keyword\">import</span> _isEmpty <span class=\"token keyword\">from</span> <span class=\"token string\">'lodash/isEmpty'</span><span class=\"token punctuation\">;</span></pre></td></tr></table></figure></li>\n<li>\n<p>注：在 webpack4.x 中默认对 tree-shaking 进行了支持。 在 webpack2.x 中使用 tree-shaking；</p>\n</li>\n</ul>\n</li>\n<li>\n<p>split chunks（分包）</p>\n<ul>\n<li>\n<p>webpack4.x 已执行只能代码分包</p>\n</li>\n<li>\n<p>按需加载（多到麻脑壳...）</p>\n</li>\n</ul>\n</li>\n<li>\n<p>gzip</p>\n<ul>\n<li>\n<p>服务端配置 gzip 压缩后可以大大缩减资源大小</p>\n</li>\n<li>\n<p>eg:</p>\n<ul>\n<li>\n<figure class=\"highlight nginx\"><figcaption data-lang=\"nginx\"></figcaption><table><tr><td data-num=\"1\"></td><td><pre><span class=\"token directive\"><span class=\"token keyword\">nginx中进行配置</span></span></pre></td></tr><tr><td data-num=\"2\"></td><td><pre>http <span class=\"token punctuation\">&#123;</span></pre></td></tr><tr><td data-num=\"3\"></td><td><pre>  <span class=\"token directive\"><span class=\"token keyword\">gzip</span> <span class=\"token boolean\">on</span></span><span class=\"token punctuation\">;</span></pre></td></tr><tr><td data-num=\"4\"></td><td><pre>  <span class=\"token directive\"><span class=\"token keyword\">gzip_buffers</span> <span class=\"token number\">32</span> <span class=\"token number\">4K</span></span><span class=\"token punctuation\">;</span></pre></td></tr><tr><td data-num=\"5\"></td><td><pre>  <span class=\"token directive\"><span class=\"token keyword\">gzip_comp_level</span> <span class=\"token number\">6</span></span><span class=\"token punctuation\">;</span></pre></td></tr><tr><td data-num=\"6\"></td><td><pre>  <span class=\"token directive\"><span class=\"token keyword\">gzip_min_length</span> <span class=\"token number\">100</span></span><span class=\"token punctuation\">;</span></pre></td></tr><tr><td data-num=\"7\"></td><td><pre>  <span class=\"token directive\"><span class=\"token keyword\">gzip_types</span> application/javascript text/css text/xml</span><span class=\"token punctuation\">;</span></pre></td></tr><tr><td data-num=\"8\"></td><td><pre>  <span class=\"token directive\"><span class=\"token keyword\">gzip_disable</span> <span class=\"token string\">\"MSIE [1-6]\\.\"</span></span><span class=\"token punctuation\">;</span></pre></td></tr><tr><td data-num=\"9\"></td><td><pre>  <span class=\"token directive\"><span class=\"token keyword\">gzip_vary</span> <span class=\"token boolean\">on</span></span><span class=\"token punctuation\">;</span></pre></td></tr><tr><td data-num=\"10\"></td><td><pre><span class=\"token punctuation\">&#125;</span></pre></td></tr><tr><td data-num=\"11\"></td><td><pre></pre></td></tr><tr><td data-num=\"12\"></td><td><pre>作者：黑色的枫</pre></td></tr><tr><td data-num=\"13\"></td><td><pre>链接：https://juejin.cn/post/6904517485349830670</pre></td></tr><tr><td data-num=\"14\"></td><td><pre>来源：稀土掘金</pre></td></tr><tr><td data-num=\"15\"></td><td><pre>著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</pre></td></tr></table></figure></li>\n</ul>\n</li>\n</ul>\n</li>\n<li>\n<p>图片压缩</p>\n</li>\n<li>\n<p>图片分割</p>\n</li>\n<li>\n<p>sprite 雪碧图</p>\n<ul>\n<li>小图片合并为一张大的图片，然后通过 background 分割到需要展示的图片</li>\n</ul>\n</li>\n<li>\n<p>CDN</p>\n</li>\n<li>\n<p>懒加载</p>\n</li>\n</ol>\n",
+            "tags": [
+                "春招面试高频",
+                "性能优化手段"
+            ]
         },
         {
             "id": "https://cathlee.github.io/js/",
