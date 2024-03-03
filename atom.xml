@@ -8,9 +8,73 @@
     <author>
       <name>神烦大眼怪</name>
     </author>
-    <updated>2024-01-06T05:46:17.000Z</updated>
+    <updated>2024-03-03T02:03:50.000Z</updated>
     <category term="Peace" />
     <category term="Love" />
+    <entry>
+        <id>https://cathlee.github.io/vapor/</id>
+        <title>vapor</title>
+        <link rel="alternate" href="https://cathlee.github.io/vapor/"/>
+        <content type="html">&lt;h1 id=&#34;关于vapor-mode现阶段进度的理解总结-第一章&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#关于vapor-mode现阶段进度的理解总结-第一章&#34;&gt;#&lt;/a&gt; 关于 Vapor Mode 现阶段进度的理解总结 -- 第一章&lt;/h1&gt;
+&lt;p&gt;前言：本文在介绍 vapor mode 之前，第一章会先介绍明确最基本的三元论，是什么？为什么？怎么做？&lt;/p&gt;
+&lt;p&gt;未来几章会逐步介绍 “怎么做” 阶段，以及各个大佬的进度，待解决的问题，同时最后思考，我们能做些什么参与到相关开源项目中。&lt;/p&gt;
+&lt;h2 id=&#34;vapor-mode是什么&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#vapor-mode是什么&#34;&gt;#&lt;/a&gt; Vapor Mode 是什么&lt;/h2&gt;
+&lt;p&gt;熟悉 vue 的都知道，vue 的渲染原理借助了一个核心概念 -- 虚拟 dom，有了虚拟 dom 我们在更新节点时能够实现对 diff 节点的收集和相关依赖的收集，以便于下一次的渲染速度能够得到提升。&lt;/p&gt;
+&lt;p&gt;于此同时虚拟 dom 本身并不是 dom，我们在做节点渲染时&lt;strong&gt;往往需要去生成对应的虚拟节点，通过比对新旧 dom 树去替换待更新的 dom&lt;/strong&gt;，这种过程从原理上来说是存在性能消耗的。&lt;/p&gt;
+&lt;p&gt;于是 vue 推出的 vapor mode 的想法，就是直接对 dom 进行操作，直接修改对应的节点，而不是生成虚拟 dom 去操作。&lt;/p&gt;
+&lt;h2 id=&#34;为什么推出vapor&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#为什么推出vapor&#34;&gt;#&lt;/a&gt; 为什么推出 Vapor&lt;/h2&gt;
+&lt;p&gt;我把 vue 关于虚拟 dom 层面的优化理解的为三个阶段：全量更新虚拟 dom-&amp;gt; 增量查询待更新的虚拟 dom-&amp;gt; 不再使用虚拟 dom（vapor mode）&lt;/p&gt;
+&lt;p&gt;前面全量更新 -&amp;gt; 增量更新的过程，其实主要就是 vue2-&amp;gt;vue3 过程中所做的工作。&lt;/p&gt;
+&lt;h3 id=&#34;vue2-vue3所做的优化&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#vue2-vue3所做的优化&#34;&gt;#&lt;/a&gt; Vue2-&amp;gt;Vue3 所做的优化&lt;/h3&gt;
+&lt;p&gt;在 Vue 2 中，组件的更新机制依赖于&lt;strong&gt;全量重新渲染组件树来识别和应用变更&lt;/strong&gt;。这意味着即使只有少数几个节点需要更新，Vue 2 也会收集整个组件的依赖，重新生成整个组件的虚拟 DOM 树，并通过对比新旧虚拟 DOM 树来确定需要更新的具体部分。这个过程虽然简化了更新逻辑，但在处理大型或复杂组件树时可能会引入不必要的性能开销，&lt;strong&gt;因为它需要重新计算整个组件树，而不是只关注变化的部分&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;Vue 3 通过引入编译时优化和更细粒度的响应式系统来解决这一问题。利用编译时的&lt;strong&gt;静态分析&lt;/strong&gt;，Vue 3 能够预先确定组件模板中哪些部分可能会发生变化，从而在运行时精确地跟踪和更新这些变化的部分。这种增量更新机制显著提高了更新效率，因为&lt;strong&gt;它避免了对未更改节点的无谓计算和 DOM 操作。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;vue2 过渡到 vue3 的实现方法之一：&lt;strong&gt;随着 ES6 的发展，Vue 的响应式系统从 Vue 2 的基于 Object.defineProperty 的属性访问拦截，升级到 Vue 3 的基于 Proxy 的对象拦截。这个变化使得依赖收集和变更通知的机制从对单个属性的操作转变为可以直接作用于整个对象，提高了响应式系统的性能和灵活性。此外，Proxy 的使用允许 Vue 3 将变更检测的粒度从属性级别提升到对象级别，从而简化了组件和数据更新的复杂度&lt;/strong&gt; **&lt;/p&gt;
+&lt;h4 id=&#34;vue3中使用proxy劫持整个对象相较于objectdefineproperty的优势是什么&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#vue3中使用proxy劫持整个对象相较于objectdefineproperty的优势是什么&#34;&gt;#&lt;/a&gt; vue3 中使用 proxy 劫持整个对象相较于 object.defineProperty 的优势是什么&lt;/h4&gt;
+&lt;ol&gt;
+&lt;li&gt;object.defineProperty 收集 / 触发依赖变更时，需要通过遍历对象的方式，收集 getter/setter，然后在更新时查找出具体是哪个 / 哪些依赖存在变化，然后触发对象 getter/setter 进行增量或是全量的更新。同时面临对象的 push &lt;code&gt;、&lt;/code&gt; pop &lt;code&gt;、&lt;/code&gt; shift &lt;code&gt;、&lt;/code&gt; unshift &lt;code&gt;、&lt;/code&gt; splice &lt;code&gt;、&lt;/code&gt; sort &lt;code&gt;和&lt;/code&gt;  reverse 等一系列操作时，为了保持响应式，需要手动触发对象 getter/setter&lt;/li&gt;
+&lt;li&gt;使用 proxy 收集 / 触发依赖变更时，无需遍历对象收集 getter/setter，proxy 的 handler 对象直接能够对对象的一系列操作进行劫持。在面临更多的对象的 push &lt;code&gt;、&lt;/code&gt; pop &lt;code&gt;、&lt;/code&gt; shift &lt;code&gt;、&lt;/code&gt; unshift &lt;code&gt;、&lt;/code&gt; splice &lt;code&gt;、&lt;/code&gt; sort &lt;code&gt;和&lt;/code&gt;  reverse 等操作时，无需手动触发对象的 setter/setter&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h4 id=&#34;vue3的节点diff优化&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#vue3的节点diff优化&#34;&gt;#&lt;/a&gt; Vue3 的节点 diff 优化&lt;/h4&gt;
+&lt;p&gt;同时在 vue3 中，为了更好的优化渲染过程还会存在虚拟 dom 算法层面的优化，&lt;strong&gt;其中的一个比较核心的概念就是静态提升&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;vue2 过渡到 vue3 的实现方法之二：&lt;strong&gt;Vue 从 v2 中收集组件树的所有相关资源生成虚拟树的过程，过渡到 v3 中通过 babel 解析 vue 模版识别出 ast 抽象语法树中的静态节点和动态节点的方式，通过复用静态节点，重点关注动态节点的变更的方式来重建虚拟树。从而实现编译时过程中 diff 性能的优化。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;所谓静态提升就是 -- 这一识别并预处理那些在组件的多次渲染中不会改变的静态内容，将它们在编译时期提前转换为常量，以减少在组件每次更新时对这些静态内容的重复计算和渲染&lt;/p&gt;
+&lt;p&gt;静态提升涉及到的实施过程如下：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;解析模板（compiler-core）：&lt;/strong&gt; 将 Vue 模板（一个 HTML-like 的字符串）解析成 AST。这一步涉及词法分析（tokenization）和语法分析（parsing），将模板字符串转换成 AST 节点。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;优化 AST（compiler-core）：&lt;/strong&gt; 遍历 AST，标记静态节点和静态根节点。这一步是优化的关键，它识别出哪些节点在组件的多次渲染中不会改变。静态节点可以在编译时直接转换成渲染函数中的常量，避免在每次渲染时的重新计算。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;代码生成（code-generation）：&lt;/strong&gt; 将优化后的 AST 转换成可执行的渲染函数代码。这一步涉及将 AST 节点转换为 JavaScript 代码，这些代码在执行时能够生成虚拟 DOM 树。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h4 id=&#34;v3编译时优化的细节&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#v3编译时优化的细节&#34;&gt;#&lt;/a&gt; V3 编译时优化的细节&lt;/h4&gt;
+&lt;p&gt;在编译时优化过程中，v3 新增了 &lt;code&gt;block&lt;/code&gt; 、 &lt;code&gt;fragment&lt;/code&gt;  这两个概念来辅助静态提升。&lt;/p&gt;
+&lt;p&gt;Block: 包含静态节点和动态节点的 vnode，编译阶段，会识别出静态节点；在组件更新时，只需要识别动态的节点的变化。在后续更新中复用静态节点，追踪动态节点重建虚拟树，实现对编译时的性能提升。&lt;/p&gt;
+&lt;p&gt;在编译时的过程中，AST 的一些静态的常量如标签（&amp;lt;p&amp;gt;），表达式符号（=）等会被识别为静态资源，&lt;/p&gt;
+&lt;p&gt;而 vue 等一些内置指令会被识别为如&lt;strong&gt;不同类型的 block - 动态节点&lt;/strong&gt;：v-bind、动态文本：slot、动态列表 v-for、条件渲染 block：v-if 等&lt;/p&gt;
+&lt;p&gt;这些具体细节实现可能得自己看看源码。&lt;/p&gt;
+&lt;p&gt;fragment：为了方便开发者无需使用新增 dom 节点（&amp;lt;div&amp;gt;）来包裹对应的组件，，这样能减少 dom 树的构建，进而减少渲染过程中的压力&lt;/p&gt;
+&lt;h3 id=&#34;v3-vapor-mode的变化来源&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#v3-vapor-mode的变化来源&#34;&gt;#&lt;/a&gt; V3-&amp;gt;vapor mode 的变化来源&lt;/h3&gt;
+&lt;p&gt;由于虚拟树本身创建本身也会消耗性能，v3 接下来的想法就是受 solid.js 的 dom 更新的启发 - 即直接更新 dom，而无需生成对应的虚拟树，推出了 Vapor Mode，具体 solid 具体实施细节可能需要接下来继续探索。接下来我主要是探讨一下我目前所知的 Vapor 相关进展。&lt;/p&gt;
+&lt;h2 id=&#34;vapor-mode怎么做&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#vapor-mode怎么做&#34;&gt;#&lt;/a&gt; Vapor Mode 怎么做&lt;/h2&gt;
+&lt;p&gt;在现阶段的 Vapor Mode 中，我主要关注的是 Vapor 模式中 Render 阶段的改进细节：亦即 Vue 中 compiler 阶段，做了什么优化。&lt;/p&gt;
+&lt;p&gt;在 V3 过程中，我们会先生成虚拟 dom，再处理完静态提升后，对待渲染的节点进行重建，同时对新旧 dom 树进行比对并替换，最终增量渲染 dom 树&lt;/p&gt;
+&lt;p&gt;在 vapor mode 中，编译时的工作解析过程，仍然继续使用 v3 点 ast 和 block 进行相关重建，唯一不同的是，为了取代虚拟 dom，vapor 通过引入 IR（intermediate representation）的方式优化虚拟 dom 节点的渲染。&lt;/p&gt;
+&lt;p&gt;在 Vapor mode 中，block 和相关节点解析成特定的 IR 端代码，然后再通过 codegen 生成对应的 render 树代码，具体过程如下所示：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://raw.githubusercontent.com/CathLee/imagebed/master/vapor01.png&#34; alt=&#34;img&#34;&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;在编译时的 parse 阶段，对 vue template（html-like 的代码片段）进行解析成 ast&lt;/li&gt;
+&lt;li&gt;在编译时的 transform 阶段，对 ast 进行静态节点和动态节点划分，生成特定的 block 代码块&lt;/li&gt;
+&lt;li&gt;针对 composition api 的节点，使用虚拟 dom 的方式，通过比对新旧虚拟 dom，重建生成渲染树&lt;/li&gt;
+&lt;li&gt;针对 vapor 节点，通过识别特定标识生成 IR 代码块，直接根据 IR 代码块，将特定的 dom 进行全量替换。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Ps：针对 vapor mode 中 ，我最关注的是，ast-&amp;gt;Ir 过程是如何实现的？&lt;/p&gt;
+&lt;p&gt;参考：&lt;/p&gt;
+&lt;p&gt;&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9xaWl0YS5jb20vdWJ1Z2VlZWkvaXRlbXMvNzNhMjQxNmZkNDZjZmU2MzExYTg=&#34;&gt;https://qiita.com/ubugeeei/items/73a2416fd46cfe6311a8&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9xaWl0YS5jb20vdWJ1Z2VlZWkvaXRlbXMvYjI4YTA0YTQxMzQ4YjZlNDkyOTM=&#34;&gt;https://qiita.com/ubugeeei/items/b28a04a41348b6e49293&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9pY2FydXNnay5oYXNobm9kZS5kZXYvdnVlLTMtdmFwb3ItbW9kZQ==&#34;&gt;https://icarusgk.hashnode.dev/vue-3-vapor-mode&lt;/span&gt;&lt;/p&gt;
+</content>
+        <category term="vue" scheme="https://cathlee.github.io/categories/vue/" />
+        <category term="开源" scheme="https://cathlee.github.io/tags/%E5%BC%80%E6%BA%90/" />
+        <updated>2024-03-03T02:03:50.000Z</updated>
+    </entry>
     <entry>
         <id>https://cathlee.github.io/useEffectError/</id>
         <title>使用useEffect的错误案例</title>
