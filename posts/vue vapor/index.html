@@ -1,0 +1,89 @@
+<!DOCTYPE html><html lang="zh-cn" class="animation-prepared" data-astro-cid-e5lvscu2> <head><title>关于Vapor Mode现阶段进度的理解总结</title><meta charset="utf-8"><link rel="canonical" href="https://cathlee.github.io/posts/vue%20vapor/"><meta name="robots" content="index, follow"><meta property="og:title" content="关于Vapor Mode现阶段进度的理解总结"><meta property="og:type" content="article"><meta property="og:image" content="https://cathlee.github.io/placeholder.png"><meta property="og:url" content="https://cathlee.github.io/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="我的观点们" href="https://cathlee.github.io/atom.xml"><meta name="viewport" content="width=device-width"><meta name="generator" content="Astro v5.16.0"><meta name="twitter:image:src" content="https://cathlee.github.io/placeholder.png"><meta name="twitter:image:alt" content><meta name="twitter:creator" content="@moeyua13"><meta name="twitter:site" content="@moeyua13"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="关于Vapor Mode现阶段进度的理解总结"><meta name="twitter:description" content><script>(function(){const theme = "system";
+
+  function updateTheme() {
+    // 优先使用 localStorage 中保存的主题
+    const stored = localStorage.getItem('theme')
+    let isDark = false
+
+    if (stored) {
+      // 如果用户手动设置了主题，使用保存的值
+      isDark = stored === 'dark'
+    } else if (theme === 'system' || !theme) {
+      // 否则根据系统偏好
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    } else {
+      // 使用配置的主题
+      isDark = theme === 'dark'
+    }
+
+    document.documentElement.classList.toggle('dark', isDark)
+  }
+
+  // 初始化主题
+  updateTheme()
+
+  // 监听系统主题变化（仅当用户未手动设置时）
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      document.documentElement.classList.toggle('dark', e.matches)
+    }
+  })
+})();</script><link rel="stylesheet" href="/_astro/_page_.BbSfUOGU.css">
+<style>.tk-meta-input{background-color:#fff}.code-container{position:relative}.clipboard-copy{position:absolute;top:.5rem;right:.5rem;width:1.75rem;height:1.75rem;display:flex;justify-content:center;align-items:center;border-radius:.25rem}.clipboard-copy:hover{background-color:#30363d}
+</style><script type="module" src="/_astro/page.D1hK2OoH.js"></script></head> <body class="h-100vh max-w-1200px min-w-390px mx-a" p="7.5 lg:y-0 lg:x-20" lg="grid gap-x-6 cols-[3fr_1fr] rows-[1fr_9rem]" data-astro-cid-e5lvscu2> <header class="transition-swup-header flex flex-col gap-2.5" m="7.5 lg:x-0 lg:t-20 lg:b-4" lg="row-1-2 col-2-3 justify-between items-start" data-astro-cid-e5lvscu2> <hgroup lg="write-vertical-right items-start b-l-2px b-l-primary text-left" flex="~ col gap-2.5" class="cursor-pointer text-center duration-800 ease-in-out"> <a class="not-underline-hover duration-800 ease-in-out" lg:p="x-2.5 b-12 hover:t-3.75 hover:b-8.75" hover:lg=" bg-primary color-background" href="/"> <h3 class="text-5 font-extrabold font-header">Some Tech&#39;s Blog</h3> <h1 class="text-8 font-extrabold font-header">我的观点们</h1> </a> </hgroup> <nav class="text-center font-bold" flex="~ col gap-4"> <ul lg="flex-col items-start text-4" class="text-3.5" flex="~ row gap-2 justify-center"> <li> <a class="" href="/"> 文章 </a> </li><li> <a class="" href="/archive"> 归档 </a> </li><li> <a class="" href="/categories"> 分类 </a> </li><li> <a class="" href="/about"> 关于 </a> </li><li> <a class="" href="/gallery"> 影集 </a> </li> </ul> <ul flex="~ row gap-1 justify-center"> <li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="github" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-github w-6 h-6">github</span> </a> </li><li> <a href="/atom.xml" target="_blank" title="rss" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-rss w-6 h-6">rss</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="twitter" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-twitter w-6 h-6">twitter</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="mastodon" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-mastodon w-6 h-6">mastodon</span> </a> </li> <li> <button id="theme-toggle" class="inline-flex items-center cursor-pointer border-none bg-transparent p-0 transition-transform duration-200 hover:scale-110 active:scale-95 not-underline-hover" aria-label="切换深色/浅色模式" title="切换主题"> <span class="sun-icon i-mdi-weather-sunny w-6 h-6"></span> <span class="moon-icon i-mdi-weather-night w-6 h-6 hidden"></span> </button> <script type="module">function a(e){document.addEventListener("swup:page:view",e)}function u(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):e(),a(e)}const i="theme",d="dark";function c(){if(typeof localStorage<"u"){const e=localStorage.getItem(i);if(e==="light"||e==="dark")return e}return typeof window<"u"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}function s(e){typeof localStorage<"u"&&localStorage.setItem(i,e),typeof document<"u"&&(e==="dark"?document.documentElement.classList.add(d):document.documentElement.classList.remove(d))}function m(){const t=c()==="dark"?"light":"dark";return s(t),t}function l(){const e=c();s(e)}function f(){const e=document.getElementById("theme-toggle"),t=e?.querySelector(".sun-icon"),n=e?.querySelector(".moon-icon");l();function o(){const r=document.documentElement.classList.contains("dark");t&&n&&(r?(t.classList.add("hidden"),n.classList.remove("hidden")):(t.classList.remove("hidden"),n.classList.add("hidden")))}o(),e?.addEventListener("click",()=>{m(),o()})}u(f);</script> </li> </ul> </nav> </header> <main class="transition-swup-main overflow-y-scroll scrollbar-hide outline-none" lg="row-1-3 col-1-2 py-20 " data-astro-cid-e5lvscu2>   <article class="prose"> <header flex="~ col gap-2"> <h1 class="post-title"> <a class="not-prose" href="/posts/vue vapor/">关于Vapor Mode现阶段进度的理解总结</a> </h1> <div class="text-3.5"> <span>发布于</span> <time>2025-05-04</time> <a href="/categories/Vue">
+# Vue </a> </div> </header>  <h1 id="关于vapor-mode现阶段进度的理解总结第一章">关于Vapor Mode现阶段进度的理解总结—第一章</h1>
+<p>前言：本文在介绍vapor mode之前，第一章会先介绍明确最基本的三元论，是什么？为什么？怎么做？</p>
+<p>未来几章会逐步介绍“怎么做”阶段，以及各个大佬的进度，待解决的问题，同时最后思考，我们能做些什么参与到相关开源项目中。</p>
+<h2 id="vapor-mode是什么">Vapor Mode是什么</h2>
+<p>熟悉vue的都知道，vue的渲染原理借助了一个核心概念—虚拟dom，有了虚拟dom我们在更新节点时能够实现对diff节点的收集和相关依赖的收集，以便于下一次的渲染速度能够得到提升。</p>
+<p>于此同时虚拟dom本身并不是dom，我们在做节点渲染时<strong>往往需要去生成对应的虚拟节点，通过比对新旧dom树去替换待更新的dom</strong>，这种过程从原理上来说是存在性能消耗的。</p>
+<p>于是vue推出的vapor mode的想法，就是直接对dom进行操作，直接修改对应的节点，而不是生成虚拟dom去操作。</p>
+<h2 id="为什么推出vapor">为什么推出Vapor</h2>
+<p>我把vue关于虚拟dom层面的优化理解的为三个阶段：全量更新虚拟dom->增量查询待更新的虚拟dom->不再使用虚拟dom（vapor mode）</p>
+<p>前面全量更新->增量更新的过程，其实主要就是vue2->vue3过程中所做的工作。</p>
+<h3 id="vue2-vue3所做的优化">Vue2->Vue3所做的优化</h3>
+<p>在Vue 2中，组件的更新机制依赖于<strong>全量重新渲染组件树来识别和应用变更</strong>。这意味着即使只有少数几个节点需要更新，Vue 2也会收集整个组件的依赖，重新生成整个组件的虚拟DOM树，并通过对比新旧虚拟DOM树来确定需要更新的具体部分。这个过程虽然简化了更新逻辑，但在处理大型或复杂组件树时可能会引入不必要的性能开销，<strong>因为它需要重新计算整个组件树，而不是只关注变化的部分</strong>。</p>
+<p>Vue 3通过引入编译时优化和更细粒度的响应式系统来解决这一问题。利用编译时的<strong>静态分析</strong>，Vue 3能够预先确定组件模板中哪些部分可能会发生变化，从而在运行时精确地跟踪和更新这些变化的部分。这种增量更新机制显著提高了更新效率，因为<strong>它避免了对未更改节点的无谓计算和DOM操作。</strong></p>
+<p>vue2过渡到vue3的实现方法之一：<strong>随着ES6的发展，Vue的响应式系统从Vue 2的基于Object.defineProperty的属性访问拦截，升级到Vue 3的基于Proxy的对象拦截。这个变化使得依赖收集和变更通知的机制从对单个属性的操作转变为可以直接作用于整个对象，提高了响应式系统的性能和灵活性。此外，Proxy的使用允许Vue 3将变更检测的粒度从属性级别提升到对象级别，从而简化了组件和数据更新的复杂度**</strong></p>
+<h4 id="vue3中使用proxy劫持整个对象相较于objectdefineproperty的优势是什么">vue3中使用proxy劫持整个对象相较于object.defineProperty的优势是什么</h4>
+<ol>
+<li>object.defineProperty 收集/触发依赖变更时，需要通过遍历对象的方式，收集getter/setter，然后在更新时查找出具体是哪个/哪些依赖存在变化，然后触发对象getter/setter进行增量或是全量的更新。同时面临对象的<code>push</code>、<code>pop</code>、<code>shift</code>、<code>unshift</code>、<code>splice</code>、<code>sort</code>和<code>reverse</code>等一系列操作时，为了保持响应式，需要手动触发对象getter/setter</li>
+<li>使用proxy收集/触发依赖变更时，无需遍历对象收集getter/setter，proxy的handler对象直接能够对对象的一系列操作进行劫持。在面临更多的对象的<code>push</code>、<code>pop</code>、<code>shift</code>、<code>unshift</code>、<code>splice</code>、<code>sort</code>和<code>reverse</code>等操作时，无需手动触发对象的setter/setter</li>
+</ol>
+<h4 id="vue3的节点diff优化">Vue3的节点diff优化</h4>
+<p>同时在vue3中，为了更好的优化渲染过程还会存在虚拟dom算法层面的优化，<strong>其中的一个比较核心的概念就是静态提升</strong>。</p>
+<p>vue2过渡到vue3的实现方法之二：<strong>Vue从v2中收集组件树的所有相关资源生成虚拟树的过程，过渡到v3中通过babel解析vue模版识别出ast抽象语法树中的静态节点和动态节点的方式，通过复用静态节点，重点关注动态节点的变更的方式来重建虚拟树。从而实现编译时过程中diff性能的优化。</strong></p>
+<p>所谓静态提升就是—这一识别并预处理那些在组件的多次渲染中不会改变的静态内容，将它们在编译时期提前转换为常量，以减少在组件每次更新时对这些静态内容的重复计算和渲染</p>
+<p>静态提升涉及到的实施过程如下：</p>
+<ol>
+<li><strong>解析模板（compiler-core）：</strong> 将Vue模板（一个HTML-like的字符串）解析成AST。这一步涉及词法分析（tokenization）和语法分析（parsing），将模板字符串转换成AST节点。</li>
+<li><strong>优化AST（compiler-core）：</strong> 遍历AST，标记静态节点和静态根节点。这一步是优化的关键，它识别出哪些节点在组件的多次渲染中不会改变。静态节点可以在编译时直接转换成渲染函数中的常量，避免在每次渲染时的重新计算。</li>
+<li><strong>代码生成（code-generation）：</strong> 将优化后的AST转换成可执行的渲染函数代码。这一步涉及将AST节点转换为JavaScript代码，这些代码在执行时能够生成虚拟DOM树。</li>
+</ol>
+<h4 id="v3编译时优化的细节">V3编译时优化的细节</h4>
+<p>在编译时优化过程中，v3新增了<strong>block,fragment</strong>这两个概念来辅助静态提升。</p>
+<p>Block:包含静态节点和动态节点的vnode，编译阶段，会识别出静态节点；在组件更新时，只需要识别动态的节点的变化。在后续更新中复用静态节点，追踪动态节点重建虚拟树，实现对编译时的性能提升。</p>
+<p>在编译时的过程中，AST的一些静态的常量如标签（</p><p>），表达式符号（=）等会被识别为静态资源，</p>
+<p>而vue等一些内置指令会被识别为如<strong>不同类型的block-动态节点</strong>：v-bind、动态文本：slot、动态列表 v-for、条件渲染block：v-if 等</p>
+<p>这些具体细节实现可能得自己看看源码。</p>
+<p>fragment：为了方便开发者无需使用新增dom节点（</p><div>）来包裹对应的组件，，这样能减少dom树的构建，进而减少渲染过程中的压力<p></p>
+<h3 id="v3-vapor-mode的变化来源">V3->vapor mode的变化来源</h3>
+<p>由于虚拟树本身创建本身也会消耗性能，v3接下来的想法就是受solid.js的dom更新的启发-即直接更新dom，而无需生成对应的虚拟树，推出了Vapor Mode，具体solid具体实施细节可能需要接下来继续探索。接下来我主要是探讨一下我目前所知的Vapor相关进展。</p>
+<h2 id="vapor-mode怎么做">Vapor Mode怎么做</h2>
+<p>在现阶段的Vapor Mode中，我主要关注的是Vapor模式中Render阶段的改进细节：亦即Vue中compiler阶段，做了什么优化。</p>
+<p>在V3过程中，我们会先生成虚拟dom，再处理完静态提升后，对待渲染的节点进行重建，同时对新旧dom树进行比对并替换，最终增量渲染dom树</p>
+<p>在vapor mode中，编译时的工作解析过程，仍然继续使用v3点ast和block进行相关重建，唯一不同的是，为了取代虚拟dom，vapor通过引入IR（intermediate representation）的方式优化虚拟dom节点的渲染。</p>
+<p>在Vapor mode中，block和相关节点解析成特定的IR端代码，然后再通过codegen生成对应的render树代码，具体过程如下所示：</p>
+<p><img alt="3A7F7245-6423-477C-A6CA-03FD2CF76AF7" loading="lazy" decoding="async" fetchpriority="auto" width="1146" height="685" src="/_astro/3A7F7245-6423-477C-A6CA-03FD2CF76AF7_1_105_c.3VJfRcJJ_ZhFBO2.webp" ></p>
+<ul>
+<li>在编译时的parse阶段，对vue template（html-like的代码片段）进行解析成ast</li>
+<li>在编译时的transform阶段，对ast进行静态节点和动态节点划分，生成特定的block代码块</li>
+<li>针对composition api的节点，使用虚拟dom的方式，通过比对新旧虚拟dom，重建生成渲染树</li>
+<li>针对vapor节点，通过识别特定标识生成IR代码块，直接根据IR代码块，将特定的dom进行全量替换。</li>
+</ul>
+<p>Ps：针对vapor mode中 ，我最关注的是，ast->Ir过程是如何实现的？</p>
+<p>参考：</p>
+<p><a href="https://qiita.com/ubugeeei/items/73a2416fd46cfe6311a8">https://qiita.com/ubugeeei/items/73a2416fd46cfe6311a8</a></p>
+<p><a href="https://qiita.com/ubugeeei/items/b28a04a41348b6e49293">https://qiita.com/ubugeeei/items/b28a04a41348b6e49293</a></p>
+<p><a href="https://icarusgk.hashnode.dev/vue-3-vapor-mode">https://icarusgk.hashnode.dev/vue-3-vapor-mode</a></p>
+<h2 id=""></h2></div>  </article> <footer class="mt-5">  <div class="flex items-center gap-2"> <a title="上一篇: 初探React" href="/posts/react"> <span class="inline-block vertical-mid i-mdi-chevron-double-left w-4 h-4"></span> 上一篇: 初探React </a>  </div> </footer>    </main> <footer class="transition-swup-footer py-7.5" lg="row-2-3 col-2-3" data-astro-cid-e5lvscu2> <p data-astro-cid-gcn2mc3v>© 2026 <a target="_blank" href="https://cathlee.github.io/">Yuer</a></p><p data-astro-cid-gcn2mc3v>Theme <a target="_blank" href="https://github.com/Moeyua/astro-theme-typography">Typography</a> by <a target="_blank" href="https://moeyua.com">Moeyua</a></p><p data-astro-cid-gcn2mc3v>Proudly published with <a target="_blank" href="https://astro.build/">Astro</a></p> </footer> <script type="module">document.addEventListener("animationend",e,!1);function e(){document.documentElement.classList.remove("animation-prepared"),document.removeEventListener("animationend",e,!1)}</script>  </body> </html> <script type="module">function u(e){const t=document.createElement("pre");return t.style.width="1px",t.style.height="1px",t.style.position="fixed",t.style.top="5px",t.textContent=e,t}function a(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e.textContent||"");const t=getSelection();if(t==null)return Promise.reject(new Error);t.removeAllRanges();const n=document.createRange();return n.selectNodeContents(e),t.addRange(n),document.execCommand("copy"),t.removeAllRanges(),Promise.resolve()}function i(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e);const t=document.body;if(!t)return Promise.reject(new Error);const n=u(e);return t.appendChild(n),a(n),t.removeChild(n),Promise.resolve()}async function d(e){const t=e.getAttribute("for"),n=e.getAttribute("value");function o(){e.dispatchEvent(new CustomEvent("clipboard-copy",{bubbles:!0}))}if(e.getAttribute("aria-disabled")!=="true"){if(n)await i(n),o();else if(t){const r="getRootNode"in Element.prototype?e.getRootNode():e.ownerDocument;if(!(r instanceof Document||"ShadowRoot"in window&&r instanceof ShadowRoot))return;const c=r.getElementById(t);c&&(await p(c),o())}}}function p(e){return e instanceof HTMLInputElement||e instanceof HTMLTextAreaElement?i(e.value):e instanceof HTMLAnchorElement&&e.hasAttribute("href")?i(e.href):a(e)}function f(e){const t=e.currentTarget;t instanceof HTMLElement&&d(t)}function l(e){if(e.key===" "||e.key==="Enter"){const t=e.currentTarget;t instanceof HTMLElement&&(e.preventDefault(),d(t))}}function m(e){e.currentTarget.addEventListener("keydown",l)}function y(e){e.currentTarget.removeEventListener("keydown",l)}class h extends HTMLElement{static define(t="clipboard-copy",n=customElements){return n.define(t,this),this}constructor(){super(),this.addEventListener("click",f),this.addEventListener("focus",m),this.addEventListener("blur",y)}connectedCallback(){this.hasAttribute("tabindex")||this.setAttribute("tabindex","0"),this.hasAttribute("role")||this.setAttribute("role","button")}get value(){return this.getAttribute("value")||""}set value(t){this.setAttribute("value",t)}}const s=typeof globalThis<"u"?globalThis:window;try{s.ClipboardCopyElement=h.define()}catch(e){if(!(s.DOMException&&e instanceof DOMException&&e.name==="NotSupportedError")&&!(e instanceof ReferenceError))throw e}document.addEventListener("clipboard-copy",e=>{const n=e.target.querySelector(".icon");n.classList.replace("i-mdi-content-copy","i-mdi-check"),setTimeout(()=>{n.classList.replace("i-mdi-check","i-mdi-content-copy")},1500)});const b=Array.from(document.querySelectorAll("pre")),g="<div class='i-mdi-content-copy icon text-white'></div>";for(const e of b){const t=document.createElement("div");t.className="code-container";const n=document.createElement("clipboard-copy"),o=e.querySelector("code");n.value=o?.textContent??"",n.className="clipboard-copy",n.innerHTML=g,e.appendChild(n),e.parentNode?.insertBefore(t,e),t.appendChild(e)}</script> 

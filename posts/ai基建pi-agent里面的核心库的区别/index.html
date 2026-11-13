@@ -1,0 +1,219 @@
+<!DOCTYPE html><html lang="zh-cn" class="animation-prepared" data-astro-cid-e5lvscu2> <head><title>【AI基建】PI-Agent里面的核心库的区别</title><meta charset="utf-8"><link rel="canonical" href="https://cathlee.github.io/posts/ai%E5%9F%BA%E5%BB%BApi-agent%E9%87%8C%E9%9D%A2%E7%9A%84%E6%A0%B8%E5%BF%83%E5%BA%93%E7%9A%84%E5%8C%BA%E5%88%AB/"><meta name="description" content="解析 pi-agent-core、pi-coding-agent、pi-ai 三个核心库的职责区别"><meta name="robots" content="index, follow"><meta property="og:title" content="【AI基建】PI-Agent里面的核心库的区别"><meta property="og:type" content="article"><meta property="og:image" content="https://cathlee.github.io/placeholder.png"><meta property="og:url" content="https://cathlee.github.io/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="我的观点们" href="https://cathlee.github.io/atom.xml"><meta name="viewport" content="width=device-width"><meta name="generator" content="Astro v5.16.0"><meta name="twitter:image:src" content="https://cathlee.github.io/placeholder.png"><meta name="twitter:image:alt" content="解析 pi-agent-core、pi-coding-agent、pi-ai 三个核心库的职责区别"><meta name="twitter:creator" content="@moeyua13"><meta name="twitter:site" content="@moeyua13"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="【AI基建】PI-Agent里面的核心库的区别"><meta name="twitter:description" content="解析 pi-agent-core、pi-coding-agent、pi-ai 三个核心库的职责区别"><script>(function(){const theme = "system";
+
+  function updateTheme() {
+    // 优先使用 localStorage 中保存的主题
+    const stored = localStorage.getItem('theme')
+    let isDark = false
+
+    if (stored) {
+      // 如果用户手动设置了主题，使用保存的值
+      isDark = stored === 'dark'
+    } else if (theme === 'system' || !theme) {
+      // 否则根据系统偏好
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    } else {
+      // 使用配置的主题
+      isDark = theme === 'dark'
+    }
+
+    document.documentElement.classList.toggle('dark', isDark)
+  }
+
+  // 初始化主题
+  updateTheme()
+
+  // 监听系统主题变化（仅当用户未手动设置时）
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      document.documentElement.classList.toggle('dark', e.matches)
+    }
+  })
+})();</script><link rel="stylesheet" href="/_astro/_page_.BbSfUOGU.css">
+<style>.tk-meta-input{background-color:#fff}.code-container{position:relative}.clipboard-copy{position:absolute;top:.5rem;right:.5rem;width:1.75rem;height:1.75rem;display:flex;justify-content:center;align-items:center;border-radius:.25rem}.clipboard-copy:hover{background-color:#30363d}
+</style><script type="module" src="/_astro/page.D1hK2OoH.js"></script></head> <body class="h-100vh max-w-1200px min-w-390px mx-a" p="7.5 lg:y-0 lg:x-20" lg="grid gap-x-6 cols-[3fr_1fr] rows-[1fr_9rem]" data-astro-cid-e5lvscu2> <header class="transition-swup-header flex flex-col gap-2.5" m="7.5 lg:x-0 lg:t-20 lg:b-4" lg="row-1-2 col-2-3 justify-between items-start" data-astro-cid-e5lvscu2> <hgroup lg="write-vertical-right items-start b-l-2px b-l-primary text-left" flex="~ col gap-2.5" class="cursor-pointer text-center duration-800 ease-in-out"> <a class="not-underline-hover duration-800 ease-in-out" lg:p="x-2.5 b-12 hover:t-3.75 hover:b-8.75" hover:lg=" bg-primary color-background" href="/"> <h3 class="text-5 font-extrabold font-header">Some Tech&#39;s Blog</h3> <h1 class="text-8 font-extrabold font-header">我的观点们</h1> </a> </hgroup> <nav class="text-center font-bold" flex="~ col gap-4"> <ul lg="flex-col items-start text-4" class="text-3.5" flex="~ row gap-2 justify-center"> <li> <a class="" href="/"> 文章 </a> </li><li> <a class="" href="/archive"> 归档 </a> </li><li> <a class="" href="/categories"> 分类 </a> </li><li> <a class="" href="/about"> 关于 </a> </li><li> <a class="" href="/gallery"> 影集 </a> </li> </ul> <ul flex="~ row gap-1 justify-center"> <li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="github" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-github w-6 h-6">github</span> </a> </li><li> <a href="/atom.xml" target="_blank" title="rss" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-rss w-6 h-6">rss</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="twitter" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-twitter w-6 h-6">twitter</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="mastodon" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-mastodon w-6 h-6">mastodon</span> </a> </li> <li> <button id="theme-toggle" class="inline-flex items-center cursor-pointer border-none bg-transparent p-0 transition-transform duration-200 hover:scale-110 active:scale-95 not-underline-hover" aria-label="切换深色/浅色模式" title="切换主题"> <span class="sun-icon i-mdi-weather-sunny w-6 h-6"></span> <span class="moon-icon i-mdi-weather-night w-6 h-6 hidden"></span> </button> <script type="module">function a(e){document.addEventListener("swup:page:view",e)}function u(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):e(),a(e)}const i="theme",d="dark";function c(){if(typeof localStorage<"u"){const e=localStorage.getItem(i);if(e==="light"||e==="dark")return e}return typeof window<"u"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}function s(e){typeof localStorage<"u"&&localStorage.setItem(i,e),typeof document<"u"&&(e==="dark"?document.documentElement.classList.add(d):document.documentElement.classList.remove(d))}function m(){const t=c()==="dark"?"light":"dark";return s(t),t}function l(){const e=c();s(e)}function f(){const e=document.getElementById("theme-toggle"),t=e?.querySelector(".sun-icon"),n=e?.querySelector(".moon-icon");l();function o(){const r=document.documentElement.classList.contains("dark");t&&n&&(r?(t.classList.add("hidden"),n.classList.remove("hidden")):(t.classList.remove("hidden"),n.classList.add("hidden")))}o(),e?.addEventListener("click",()=>{m(),o()})}u(f);</script> </li> </ul> </nav> </header> <main class="transition-swup-main overflow-y-scroll scrollbar-hide outline-none" lg="row-1-3 col-1-2 py-20 " data-astro-cid-e5lvscu2>   <article class="prose"> <header flex="~ col gap-2"> <h1 class="post-title"> <a class="not-prose" href="/posts/ai基建pi-agent里面的核心库的区别/">【AI基建】PI-Agent里面的核心库的区别</a> </h1> <div class="text-3.5"> <span>发布于</span> <time>2025-08-22</time> <a href="/categories/AI基建">
+# AI基建 </a> </div> </header>  <h3 id="pi-agent-core"><code>pi-agent-core</code></h3>
+<p>通用的 agent 运行时逻辑,不含 UI 或 CLI 交互,主要包括 <code>Agent</code>、<code>agentLoop</code>、<code>AgentState</code>、<code>AgentHarness</code>、<code>SessionRepository</code> 等核心实体</p>
+<h3 id="pi-coding-agentcli-应用"><code>pi-coding-agent</code>(CLI 应用)</h3>
+<p><strong>pi-ai = 大脑接口（LLM 能力）</strong>
+<strong>pi-agent-core = Agent 引擎（循环、状态、消息、工具编排）</strong>
+<strong>pi-coding-agent = 一个具体产品形态（像 Claude Code / Cursor CLI）</strong></p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="shell"><code><span class="line"><span style="color:#50FA7B">                         User</span></span>
+<span class="line"><span style="color:#FF79C6">                          |</span></span>
+<span class="line"><span style="color:#FF79C6">                          |</span></span>
+<span class="line"><span style="color:#50FA7B">                    pi-coding-agent</span></span>
+<span class="line"><span style="color:#F8F8F2">                    (</span><span style="color:#50FA7B">CLI/TUI</span><span style="color:#F1FA8C"> 产品层</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"><span style="color:#FF79C6">                          |</span></span>
+<span class="line"><span style="color:#50FA7B">        +-----------------+----------------+</span></span>
+<span class="line"><span style="color:#FF79C6">        |</span><span style="color:#FF79C6">                                  |</span></span>
+<span class="line"><span style="color:#FF79C6">        |</span><span style="color:#FF79C6">                                  |</span></span>
+<span class="line"><span style="color:#50FA7B">  Session</span><span style="color:#F1FA8C"> Management</span><span style="color:#F1FA8C">                 Interactive</span><span style="color:#F1FA8C"> UI</span></span>
+<span class="line"><span style="color:#FF79C6">        |</span><span style="color:#FF79C6">                                  |</span></span>
+<span class="line"><span style="color:#FF79C6">        |</span></span>
+<span class="line"><span style="color:#50FA7B">        v</span></span>
+<span class="line"><span style="color:#50FA7B">+--------------------------------+</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#50FA7B">        pi-agent-core</span><span style="color:#FF79C6">            |</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#FF79C6">                                |</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#50FA7B">  Agent</span><span style="color:#F1FA8C"> Loop</span><span style="color:#FF79C6">                    |</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#FF79C6">                                |</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#50FA7B">  1.</span><span style="color:#F1FA8C"> Receive</span><span style="color:#F1FA8C"> message</span><span style="color:#FF79C6">            |</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#50FA7B">  2.</span><span style="color:#F1FA8C"> Build</span><span style="color:#F1FA8C"> context</span><span style="color:#FF79C6">              |</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#50FA7B">  3.</span><span style="color:#F1FA8C"> Call</span><span style="color:#F1FA8C"> LLM</span><span style="color:#FF79C6">                   |</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#50FA7B">  4.</span><span style="color:#F1FA8C"> Execute</span><span style="color:#F1FA8C"> tools</span><span style="color:#FF79C6">              |</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#50FA7B">  5.</span><span style="color:#F1FA8C"> Update</span><span style="color:#F1FA8C"> state</span><span style="color:#FF79C6">               |</span></span>
+<span class="line"><span style="color:#FF79C6">|</span><span style="color:#50FA7B">  6.</span><span style="color:#F1FA8C"> Repeat</span><span style="color:#FF79C6">                     |</span></span>
+<span class="line"><span style="color:#50FA7B">+--------------------------------+</span></span>
+<span class="line"><span style="color:#FF79C6">              |</span></span>
+<span class="line"><span style="color:#FF79C6">              |</span></span>
+<span class="line"><span style="color:#FF79C6">              |</span></span>
+<span class="line"><span style="color:#50FA7B">       +------+------+</span></span>
+<span class="line"><span style="color:#FF79C6">       |</span><span style="color:#FF79C6">             |</span></span>
+<span class="line"><span style="color:#50FA7B">       v</span><span style="color:#F1FA8C">             v</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#50FA7B">   pi-ai</span><span style="color:#F1FA8C">          Tools</span></span>
+<span class="line"><span style="color:#50FA7B">   LLM</span><span style="color:#F1FA8C"> Layer</span><span style="color:#F1FA8C">      filesystem</span></span>
+<span class="line"><span style="color:#50FA7B">                  bash</span></span>
+<span class="line"><span style="color:#50FA7B">                  edit</span></span>
+<span class="line"><span style="color:#50FA7B">                  browser</span></span>
+<span class="line"><span style="color:#8BE9FD">                  ...</span></span>
+<span class="line"></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">       |</span></span>
+<span class="line"><span style="color:#50FA7B">       v</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#50FA7B"> OpenAI</span></span>
+<span class="line"><span style="color:#50FA7B"> Anthropic</span></span>
+<span class="line"><span style="color:#50FA7B"> Gemini</span></span>
+<span class="line"><span style="color:#50FA7B"> Bedrock</span></span></code></pre>
+<p>pi-ai 负责：</p>
+<ul>
+<li>provider 管理</li>
+<li>API 调用</li>
+<li>streaming</li>
+<li>token</li>
+<li>model catalog</li>
+<li>OAuth</li>
+</ul>
+<p>pi-agent-core 负责</p>
+<p>agent loop</p>
+<p>思考：我可以把智能工厂和finwork的对接工程发包成sdk给大家，</p>
+<p>比如说可以把他们封装成类似pi-ai的东西</p>
+<p>pi-ai里面涉及到的核心概念</p>
+<p>1.compat—对不同模型的备用处理方案，默认使用openAi的处理方式，其他的定制化方案都叫compat</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th></th><th><code>compat.ts</code></th><th><code>model.compat</code> / <code>getCompat()</code></th></tr></thead><tbody><tr><td>层级</td><td>包级别入口模块</td><td>单个 <code>Model</code> 对象上的字段</td></tr><tr><td>作用</td><td>保留旧版全局 <code>stream()</code>/<code>getModel()</code> 等 API,供迁移期使用</td><td>描述某个具体模型/端点在协议细节上的差异（字段名、是否支持某参数等）</td></tr><tr><td>生命周期</td><td>临时,迁移完成后删除 compat.ts:7-10</td><td>长期存在,是 <code>Model</code> 类型的正式设计 types.ts:778-787</td></tr><tr><td>谁在用</td><td><code>pi-coding-agent</code> 的旧代码路径、扩展加载器</td><td>每个 API 实现内部（<code>openai-completions.ts</code> 等）在构造请求参数时使用</td></tr><tr><td>典型例子</td><td><code>import ... from "@earendil-works/pi-ai/compat"</code></td><td><code>model.compat?.sup</code></td></tr></tbody></table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>文件/概念</th><th>目的</th><th></th></tr></thead><tbody><tr><td>1</td><td><code>packages/agent/docs/models.md</code> 全文</td><td>理解整体设计意图和分层原则</td></tr><tr><td>2</td><td><code>packages/ai/src/models.ts</code> (<code>Provider</code>、<code>Models</code>、<code>createModels</code>、<code>createProvider</code>)</td><td>核心运行时接口与工厂函数</td></tr><tr><td>3</td><td><code>packages/ai/src/api/*</code> 任选一个简单实现(如 openai-completions)</td><td>了解 API 实现层如何对接真实 SDK</td></tr><tr><td>4</td><td><code>packages/ai/src/providers/*</code> 任选一个(如 openrouter,复用共享 API)</td><td>了解 provider 工厂怎么组装 <code>createProvider</code></td></tr><tr><td>5</td><td><code>packages/ai/src/providers/all.ts</code></td><td>了解聚合入口/heavy entrypoint 的设计</td></tr><tr><td>6</td><td><code>packages/ai/README.md</code> “Development” 一节</td><td>按 checklist 亲手加一个新 provider,验证理解</td></tr></tbody></table>
+<p><code>models.ts</code>(Models 运行时)、<code>compat.ts</code>(兼容层)、<code>auth/</code>(认证)、<code>api/</code>(各 provider 的 API 实现)、<code>providers/</code>(具体 provider 工厂 + 生成的 catalog)</p>
+<p>核心运行时 Models/createProvider、具体 provider 工厂如何组装、API 实现层的懒加载机制、faux 测试 provider,以及上层 pi-agent-core 和 pi-coding-agent 如何消费这套 API</p>
+<p>PI里面写得好的函数</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#6272A4">/**</span></span>
+<span class="line"><span style="color:#6272A4"> * Stop waiting for an operation when its signal aborts while continuing to</span></span>
+<span class="line"><span style="color:#6272A4"> * observe the abandoned promise so a later rejection is always handled.</span></span>
+<span class="line"><span style="color:#6272A4"> */</span></span>
+<span class="line"><span style="color:#FF79C6">export</span><span style="color:#FF79C6"> function</span><span style="color:#50FA7B"> raceWithAbortSignal</span><span style="color:#F8F8F2">&#x3C;</span><span style="color:#FFB86C;font-style:italic">T</span><span style="color:#F8F8F2">>(</span><span style="color:#FFB86C;font-style:italic">operation</span><span style="color:#FF79C6">:</span><span style="color:#8BE9FD;font-style:italic"> Promise</span><span style="color:#F8F8F2">&#x3C;</span><span style="color:#FFB86C;font-style:italic">T</span><span style="color:#F8F8F2">>, </span><span style="color:#FFB86C;font-style:italic">signal</span><span style="color:#FF79C6">:</span><span style="color:#8BE9FD;font-style:italic"> AbortSignal</span><span style="color:#F8F8F2">)</span><span style="color:#FF79C6">:</span><span style="color:#8BE9FD;font-style:italic"> Promise</span><span style="color:#F8F8F2">&#x3C;</span><span style="color:#FFB86C;font-style:italic">T</span><span style="color:#F8F8F2">> {</span></span>
+<span class="line"><span style="color:#FF79C6">	if</span><span style="color:#F8F8F2"> (signal.aborted) {</span></span>
+<span class="line"><span style="color:#FF79C6">		void</span><span style="color:#F8F8F2"> operation.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span>
+<span class="line"><span style="color:#FF79C6">		return</span><span style="color:#8BE9FD;font-style:italic"> Promise</span><span style="color:#F8F8F2">.</span><span style="color:#50FA7B">reject</span><span style="color:#F8F8F2">(</span><span style="color:#50FA7B">abortReason</span><span style="color:#F8F8F2">(signal));</span></span>
+<span class="line"><span style="color:#F8F8F2">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">	return</span><span style="color:#FF79C6;font-weight:bold"> new</span><span style="color:#8BE9FD;font-style:italic"> Promise</span><span style="color:#F8F8F2">&#x3C;</span><span style="color:#FFB86C;font-style:italic">T</span><span style="color:#F8F8F2">>((</span><span style="color:#FFB86C;font-style:italic">resolve</span><span style="color:#F8F8F2">, </span><span style="color:#FFB86C;font-style:italic">reject</span><span style="color:#F8F8F2">) </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#FF79C6">		let</span><span style="color:#F8F8F2"> settled </span><span style="color:#FF79C6">=</span><span style="color:#BD93F9"> false</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#FF79C6">		const</span><span style="color:#50FA7B"> cleanup</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> () </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> signal.</span><span style="color:#50FA7B">removeEventListener</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">abort</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">, onAbort);</span></span>
+<span class="line"><span style="color:#FF79C6">		const</span><span style="color:#50FA7B"> onAbort</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> () </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#FF79C6">			if</span><span style="color:#F8F8F2"> (settled) </span><span style="color:#FF79C6">return</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#F8F8F2">			settled </span><span style="color:#FF79C6">=</span><span style="color:#BD93F9"> true</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#50FA7B">			cleanup</span><span style="color:#F8F8F2">();</span></span>
+<span class="line"><span style="color:#50FA7B">			reject</span><span style="color:#F8F8F2">(</span><span style="color:#50FA7B">abortReason</span><span style="color:#F8F8F2">(signal));</span></span>
+<span class="line"><span style="color:#F8F8F2">		};</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F8F8F2">		signal.</span><span style="color:#50FA7B">addEventListener</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">abort</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">, onAbort, { once</span><span style="color:#FF79C6">:</span><span style="color:#BD93F9"> true</span><span style="color:#F8F8F2"> });</span></span>
+<span class="line"><span style="color:#FF79C6">		void</span><span style="color:#F8F8F2"> operation.</span><span style="color:#50FA7B">then</span><span style="color:#F8F8F2">(</span></span>
+<span class="line"><span style="color:#F8F8F2">			(</span><span style="color:#FFB86C;font-style:italic">value</span><span style="color:#F8F8F2">) </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#FF79C6">				if</span><span style="color:#F8F8F2"> (settled) </span><span style="color:#FF79C6">return</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#F8F8F2">				settled </span><span style="color:#FF79C6">=</span><span style="color:#BD93F9"> true</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#50FA7B">				cleanup</span><span style="color:#F8F8F2">();</span></span>
+<span class="line"><span style="color:#50FA7B">				resolve</span><span style="color:#F8F8F2">(value);</span></span>
+<span class="line"><span style="color:#F8F8F2">			},</span></span>
+<span class="line"><span style="color:#F8F8F2">			(</span><span style="color:#FFB86C;font-style:italic">error</span><span style="color:#FF79C6">:</span><span style="color:#8BE9FD;font-style:italic"> unknown</span><span style="color:#F8F8F2">) </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#FF79C6">				if</span><span style="color:#F8F8F2"> (settled) </span><span style="color:#FF79C6">return</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#F8F8F2">				settled </span><span style="color:#FF79C6">=</span><span style="color:#BD93F9"> true</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#50FA7B">				cleanup</span><span style="color:#F8F8F2">();</span></span>
+<span class="line"><span style="color:#50FA7B">				reject</span><span style="color:#F8F8F2">(error);</span></span>
+<span class="line"><span style="color:#F8F8F2">			},</span></span>
+<span class="line"><span style="color:#F8F8F2">		);</span></span>
+<span class="line"><span style="color:#FF79C6">		if</span><span style="color:#F8F8F2"> (signal.aborted) </span><span style="color:#50FA7B">onAbort</span><span style="color:#F8F8F2">();</span></span>
+<span class="line"><span style="color:#F8F8F2">	});</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>  </article> <footer class="mt-5">  <div class="flex items-center gap-2"> <a title="上一篇: 【性能优化】记录一次vite分包优化" href="/posts/性能优化记录一次vite分包优化"> <span class="inline-block vertical-mid i-mdi-chevron-double-left w-4 h-4"></span> 上一篇: 【性能优化】记录一次vite分包优化 </a> <a title="下一篇: 初探React" href="/posts/react"> 下一篇: 初探React <span class="inline-block vertical-mid i-mdi-chevron-double-right w-4 h-4"></span> </a> </div> </footer>    </main> <footer class="transition-swup-footer py-7.5" lg="row-2-3 col-2-3" data-astro-cid-e5lvscu2> <p data-astro-cid-gcn2mc3v>© 2026 <a target="_blank" href="https://cathlee.github.io/">Yuer</a></p><p data-astro-cid-gcn2mc3v>Theme <a target="_blank" href="https://github.com/Moeyua/astro-theme-typography">Typography</a> by <a target="_blank" href="https://moeyua.com">Moeyua</a></p><p data-astro-cid-gcn2mc3v>Proudly published with <a target="_blank" href="https://astro.build/">Astro</a></p> </footer> <script type="module">document.addEventListener("animationend",e,!1);function e(){document.documentElement.classList.remove("animation-prepared"),document.removeEventListener("animationend",e,!1)}</script>  </body> </html> <script type="module">function u(e){const t=document.createElement("pre");return t.style.width="1px",t.style.height="1px",t.style.position="fixed",t.style.top="5px",t.textContent=e,t}function a(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e.textContent||"");const t=getSelection();if(t==null)return Promise.reject(new Error);t.removeAllRanges();const n=document.createRange();return n.selectNodeContents(e),t.addRange(n),document.execCommand("copy"),t.removeAllRanges(),Promise.resolve()}function i(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e);const t=document.body;if(!t)return Promise.reject(new Error);const n=u(e);return t.appendChild(n),a(n),t.removeChild(n),Promise.resolve()}async function d(e){const t=e.getAttribute("for"),n=e.getAttribute("value");function o(){e.dispatchEvent(new CustomEvent("clipboard-copy",{bubbles:!0}))}if(e.getAttribute("aria-disabled")!=="true"){if(n)await i(n),o();else if(t){const r="getRootNode"in Element.prototype?e.getRootNode():e.ownerDocument;if(!(r instanceof Document||"ShadowRoot"in window&&r instanceof ShadowRoot))return;const c=r.getElementById(t);c&&(await p(c),o())}}}function p(e){return e instanceof HTMLInputElement||e instanceof HTMLTextAreaElement?i(e.value):e instanceof HTMLAnchorElement&&e.hasAttribute("href")?i(e.href):a(e)}function f(e){const t=e.currentTarget;t instanceof HTMLElement&&d(t)}function l(e){if(e.key===" "||e.key==="Enter"){const t=e.currentTarget;t instanceof HTMLElement&&(e.preventDefault(),d(t))}}function m(e){e.currentTarget.addEventListener("keydown",l)}function y(e){e.currentTarget.removeEventListener("keydown",l)}class h extends HTMLElement{static define(t="clipboard-copy",n=customElements){return n.define(t,this),this}constructor(){super(),this.addEventListener("click",f),this.addEventListener("focus",m),this.addEventListener("blur",y)}connectedCallback(){this.hasAttribute("tabindex")||this.setAttribute("tabindex","0"),this.hasAttribute("role")||this.setAttribute("role","button")}get value(){return this.getAttribute("value")||""}set value(t){this.setAttribute("value",t)}}const s=typeof globalThis<"u"?globalThis:window;try{s.ClipboardCopyElement=h.define()}catch(e){if(!(s.DOMException&&e instanceof DOMException&&e.name==="NotSupportedError")&&!(e instanceof ReferenceError))throw e}document.addEventListener("clipboard-copy",e=>{const n=e.target.querySelector(".icon");n.classList.replace("i-mdi-content-copy","i-mdi-check"),setTimeout(()=>{n.classList.replace("i-mdi-check","i-mdi-content-copy")},1500)});const b=Array.from(document.querySelectorAll("pre")),g="<div class='i-mdi-content-copy icon text-white'></div>";for(const e of b){const t=document.createElement("div");t.className="code-container";const n=document.createElement("clipboard-copy"),o=e.querySelector("code");n.value=o?.textContent??"",n.className="clipboard-copy",n.innerHTML=g,e.appendChild(n),e.parentNode?.insertBefore(t,e),t.appendChild(e)}</script> 

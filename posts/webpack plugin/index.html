@@ -1,0 +1,624 @@
+<!DOCTYPE html><html lang="zh-cn" class="animation-prepared" data-astro-cid-e5lvscu2> <head><title>【工程化】从一次自定义 Babel 插件发现的问题开始的探索</title><meta charset="utf-8"><link rel="canonical" href="https://cathlee.github.io/posts/webpack%20plugin/"><meta name="robots" content="index, follow"><meta property="og:title" content="【工程化】从一次自定义 Babel 插件发现的问题开始的探索"><meta property="og:type" content="article"><meta property="og:image" content="https://cathlee.github.io/placeholder.png"><meta property="og:url" content="https://cathlee.github.io/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="我的观点们" href="https://cathlee.github.io/atom.xml"><meta name="viewport" content="width=device-width"><meta name="generator" content="Astro v5.16.0"><meta name="twitter:image:src" content="https://cathlee.github.io/placeholder.png"><meta name="twitter:image:alt" content><meta name="twitter:creator" content="@moeyua13"><meta name="twitter:site" content="@moeyua13"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="【工程化】从一次自定义 Babel 插件发现的问题开始的探索"><meta name="twitter:description" content><script>(function(){const theme = "system";
+
+  function updateTheme() {
+    // 优先使用 localStorage 中保存的主题
+    const stored = localStorage.getItem('theme')
+    let isDark = false
+
+    if (stored) {
+      // 如果用户手动设置了主题，使用保存的值
+      isDark = stored === 'dark'
+    } else if (theme === 'system' || !theme) {
+      // 否则根据系统偏好
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    } else {
+      // 使用配置的主题
+      isDark = theme === 'dark'
+    }
+
+    document.documentElement.classList.toggle('dark', isDark)
+  }
+
+  // 初始化主题
+  updateTheme()
+
+  // 监听系统主题变化（仅当用户未手动设置时）
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      document.documentElement.classList.toggle('dark', e.matches)
+    }
+  })
+})();</script><link rel="stylesheet" href="/_astro/_page_.BbSfUOGU.css">
+<style>.tk-meta-input{background-color:#fff}.code-container{position:relative}.clipboard-copy{position:absolute;top:.5rem;right:.5rem;width:1.75rem;height:1.75rem;display:flex;justify-content:center;align-items:center;border-radius:.25rem}.clipboard-copy:hover{background-color:#30363d}
+</style><script type="module" src="/_astro/page.D1hK2OoH.js"></script></head> <body class="h-100vh max-w-1200px min-w-390px mx-a" p="7.5 lg:y-0 lg:x-20" lg="grid gap-x-6 cols-[3fr_1fr] rows-[1fr_9rem]" data-astro-cid-e5lvscu2> <header class="transition-swup-header flex flex-col gap-2.5" m="7.5 lg:x-0 lg:t-20 lg:b-4" lg="row-1-2 col-2-3 justify-between items-start" data-astro-cid-e5lvscu2> <hgroup lg="write-vertical-right items-start b-l-2px b-l-primary text-left" flex="~ col gap-2.5" class="cursor-pointer text-center duration-800 ease-in-out"> <a class="not-underline-hover duration-800 ease-in-out" lg:p="x-2.5 b-12 hover:t-3.75 hover:b-8.75" hover:lg=" bg-primary color-background" href="/"> <h3 class="text-5 font-extrabold font-header">Some Tech&#39;s Blog</h3> <h1 class="text-8 font-extrabold font-header">我的观点们</h1> </a> </hgroup> <nav class="text-center font-bold" flex="~ col gap-4"> <ul lg="flex-col items-start text-4" class="text-3.5" flex="~ row gap-2 justify-center"> <li> <a class="" href="/"> 文章 </a> </li><li> <a class="" href="/archive"> 归档 </a> </li><li> <a class="" href="/categories"> 分类 </a> </li><li> <a class="" href="/about"> 关于 </a> </li><li> <a class="" href="/gallery"> 影集 </a> </li> </ul> <ul flex="~ row gap-1 justify-center"> <li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="github" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-github w-6 h-6">github</span> </a> </li><li> <a href="/atom.xml" target="_blank" title="rss" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-rss w-6 h-6">rss</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="twitter" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-twitter w-6 h-6">twitter</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="mastodon" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-mastodon w-6 h-6">mastodon</span> </a> </li> <li> <button id="theme-toggle" class="inline-flex items-center cursor-pointer border-none bg-transparent p-0 transition-transform duration-200 hover:scale-110 active:scale-95 not-underline-hover" aria-label="切换深色/浅色模式" title="切换主题"> <span class="sun-icon i-mdi-weather-sunny w-6 h-6"></span> <span class="moon-icon i-mdi-weather-night w-6 h-6 hidden"></span> </button> <script type="module">function a(e){document.addEventListener("swup:page:view",e)}function u(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):e(),a(e)}const i="theme",d="dark";function c(){if(typeof localStorage<"u"){const e=localStorage.getItem(i);if(e==="light"||e==="dark")return e}return typeof window<"u"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}function s(e){typeof localStorage<"u"&&localStorage.setItem(i,e),typeof document<"u"&&(e==="dark"?document.documentElement.classList.add(d):document.documentElement.classList.remove(d))}function m(){const t=c()==="dark"?"light":"dark";return s(t),t}function l(){const e=c();s(e)}function f(){const e=document.getElementById("theme-toggle"),t=e?.querySelector(".sun-icon"),n=e?.querySelector(".moon-icon");l();function o(){const r=document.documentElement.classList.contains("dark");t&&n&&(r?(t.classList.add("hidden"),n.classList.remove("hidden")):(t.classList.remove("hidden"),n.classList.add("hidden")))}o(),e?.addEventListener("click",()=>{m(),o()})}u(f);</script> </li> </ul> </nav> </header> <main class="transition-swup-main overflow-y-scroll scrollbar-hide outline-none" lg="row-1-3 col-1-2 py-20 " data-astro-cid-e5lvscu2>   <article class="prose"> <header flex="~ col gap-2"> <h1 class="post-title"> <a class="not-prose" href="/posts/webpack plugin/">【工程化】从一次自定义 Babel 插件发现的问题开始的探索</a> </h1> <div class="text-3.5"> <span>发布于</span> <time>2025-11-29</time> <a href="/categories/工程化">
+# 工程化 </a> </div> </header>  <h2 id="前言">前言</h2>
+<p>最近在一个基于 Create React App 的项目中，我尝试编写一个自定义 Babel 插件来批量禁用 Button 组件。然而实践中遇到了一个奇怪的问题：使用 <code>addBabelPlugin</code> 会导致页面白屏卡死，而使用 <code>addWebpackPlugin</code> 却能正常工作。</p>
+<p>这个问题引发了我对 Webpack 和 Babel 工作机制的深入思考。在分析问题之前，我们先来系统性地梳理几个核心概念，这样更有助于理解问题的本质。</p>
+<hr>
+<h2 id="一编译时与运行时">一、编译时与运行时</h2>
+<p>这是前端工程化中最基础也最重要的概念边界。</p>
+<h3 id="11-概念定义">1.1 概念定义</h3>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>编译时 (Build Time)                      运行时 (Runtime)</span></span>
+<span class="line"><span>────────────────────────────────────────────────────────────</span></span>
+<span class="line"><span>npm run build                            用户打开浏览器</span></span>
+<span class="line"><span>     ↓                                        ↓</span></span>
+<span class="line"><span>源代码 → Babel/Webpack 处理 → bundle.js  →  浏览器加载执行</span></span></code></pre>
+<p>简单来说，编译时是代码从”源码”变成”可执行文件”的过程，运行时是代码在浏览器中实际执行的过程。</p>
+<h3 id="12-编译时build-time">1.2 编译时（Build Time）</h3>
+<p><strong>执行环境</strong>：Node.js</p>
+<p><strong>触发时机</strong>：执行 <code>npm run build</code> 或 <code>npm start</code></p>
+<p><strong>主要工作</strong>：</p>
+<ul>
+<li>Babel 转换 JSX/ES6+ 语法为浏览器可识别的代码</li>
+<li>Webpack 解析依赖、打包所有模块</li>
+<li>CSS 预处理器编译（Sass/Less → CSS）</li>
+<li>代码压缩、Tree Shaking、资源优化</li>
+</ul>
+<p><strong>产物</strong>：静态文件（JS、CSS、HTML、图片等）</p>
+<h3 id="13-运行时runtime">1.3 运行时（Runtime）</h3>
+<p><strong>执行环境</strong>：浏览器</p>
+<p><strong>触发时机</strong>：用户访问页面</p>
+<p><strong>主要工作</strong>：</p>
+<ul>
+<li>执行 JavaScript 代码</li>
+<li>React/Vue 创建虚拟 DOM、渲染组件</li>
+<li>事件监听与处理</li>
+<li>状态管理与更新</li>
+<li>API 请求与响应</li>
+</ul>
+<p><strong>产物</strong>：用户可见的界面和交互</p>
+<h3 id="14-实例解析">1.4 实例解析</h3>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#6272A4">// 你写的源代码</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#50FA7B"> App</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> () </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#F8F8F2"> [count, setCount] </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> useState</span><span style="color:#F8F8F2">(</span><span style="color:#BD93F9">0</span><span style="color:#F8F8F2">);</span></span>
+<span class="line"><span style="color:#FF79C6">  return</span><span style="color:#F8F8F2"> &#x3C;</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#50FA7B;font-style:italic"> onClick</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">() </span><span style="color:#FF79C6">=></span><span style="color:#50FA7B"> setCount</span><span style="color:#F8F8F2">(count </span><span style="color:#FF79C6">+</span><span style="color:#BD93F9"> 1</span><span style="color:#F8F8F2">)</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">></span><span style="color:#FF79C6">{</span><span style="color:#F8F8F2">count</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">&#x3C;/</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#F8F8F2">>;</span></span>
+<span class="line"><span style="color:#F8F8F2">};</span></span></code></pre>
+<p><strong>编译时发生了什么？</strong></p>
+<p>Babel 将 JSX 转换为 JavaScript：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#FF79C6">const</span><span style="color:#50FA7B"> App</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> () </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#F8F8F2"> [count, setCount] </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> useState</span><span style="color:#F8F8F2">(</span><span style="color:#BD93F9">0</span><span style="color:#F8F8F2">);</span></span>
+<span class="line"><span style="color:#FF79C6">  return</span><span style="color:#F8F8F2"> React.</span><span style="color:#50FA7B">createElement</span><span style="color:#F8F8F2">(</span></span>
+<span class="line"><span style="color:#F8F8F2">    Button,</span></span>
+<span class="line"><span style="color:#F8F8F2">    { </span><span style="color:#50FA7B">onClick</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> () </span><span style="color:#FF79C6">=></span><span style="color:#50FA7B"> setCount</span><span style="color:#F8F8F2">(count </span><span style="color:#FF79C6">+</span><span style="color:#BD93F9"> 1</span><span style="color:#F8F8F2">) },</span></span>
+<span class="line"><span style="color:#F8F8F2">    count</span></span>
+<span class="line"><span style="color:#F8F8F2">  );</span></span>
+<span class="line"><span style="color:#F8F8F2">};</span></span></code></pre>
+<p><strong>运行时发生了什么？</strong></p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>1. 浏览器加载 bundle.js</span></span>
+<span class="line"><span>2. App 函数被调用</span></span>
+<span class="line"><span>3. useState(0) 初始化状态，count = 0</span></span>
+<span class="line"><span>4. React.createElement 创建虚拟 DOM</span></span>
+<span class="line"><span>5. React 将虚拟 DOM 渲染为真实 DOM</span></span>
+<span class="line"><span>6. 页面显示按钮，数字为 0</span></span>
+<span class="line"><span>7. 用户点击按钮</span></span>
+<span class="line"><span>8. onClick 触发，setCount(1) 被调用</span></span>
+<span class="line"><span>9. React 重新渲染，count 更新为 1</span></span></code></pre>
+<h3 id="15-常见误区">1.5 常见误区</h3>
+<p><strong>误区</strong>：Webpack 把代码打包成 bundle 是运行时的工作。</p>
+<p><strong>纠正</strong>：Webpack 的整个工作流程都属于编译时。运行时专指代码在浏览器中执行的阶段。</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>编译时（全部在 Node.js 中完成）</span></span>
+<span class="line"><span>├── 解析入口文件</span></span>
+<span class="line"><span>├── Loader 处理各类文件</span></span>
+<span class="line"><span>├── 构建模块依赖图</span></span>
+<span class="line"><span>├── Plugin 介入各生命周期</span></span>
+<span class="line"><span>├── 代码分割、生成 Chunks</span></span>
+<span class="line"><span>└── 输出 Bundle 文件到 dist 目录</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>运行时（在浏览器中）</span></span>
+<span class="line"><span>├── 下载并解析 HTML</span></span>
+<span class="line"><span>├── 加载 JS/CSS 资源</span></span>
+<span class="line"><span>├── 执行 JavaScript 代码</span></span>
+<span class="line"><span>├── 框架初始化与渲染</span></span>
+<span class="line"><span>└── 响应用户交互</span></span></code></pre>
+<hr>
+<h2 id="二modulechunkbundle-的关系">二、Module、Chunk、Bundle 的关系</h2>
+<p>理解了编译时和运行时的边界，我们再来看看编译时 Webpack 内部是如何组织代码的。</p>
+<h3 id="21-一句话概括">2.1 一句话概括</h3>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>Module（模块）──→ 打包 ──→ Chunk（代码块）──→ 输出 ──→ Bundle（最终文件）</span></span>
+<span class="line"><span>   源文件                   中间产物                    输出产物</span></span></code></pre>
+<h3 id="22-module模块">2.2 Module（模块）</h3>
+<p><strong>定义</strong>：项目中的每一个源文件都是一个 Module。</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>src/</span></span>
+<span class="line"><span>├── index.js        → 1 个 module</span></span>
+<span class="line"><span>├── App.jsx         → 1 个 module</span></span>
+<span class="line"><span>├── utils.js        → 1 个 module</span></span>
+<span class="line"><span>├── style.css       → 1 个 module（是的，CSS 也是模块）</span></span>
+<span class="line"><span>└── logo.png        → 1 个 module（图片也是模块）</span></span></code></pre>
+<p>在 Webpack 的世界里，一切皆模块。Module 是 Webpack 处理的最小单位。</p>
+<h3 id="23-chunk代码块">2.3 Chunk（代码块）</h3>
+<p><strong>定义</strong>：一组相关 Module 的集合，是 Webpack 打包过程中的逻辑分组。</p>
+<p>Chunk 存在于内存中，是一个抽象概念。它的产生方式有三种：</p>
+<p><strong>1. 入口 Chunk</strong>：每个 entry 配置产生一个</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#F8F8F2">entry: {</span></span>
+<span class="line"><span style="color:#F8F8F2">  main: </span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">./src/index.js</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">,    </span><span style="color:#6272A4">// → main chunk</span></span>
+<span class="line"><span style="color:#F8F8F2">  admin: </span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">./src/admin.js</span><span style="color:#E9F284">'</span><span style="color:#6272A4">    // → admin chunk</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<p><strong>2. 异步 Chunk</strong>：动态 <code>import()</code> 产生</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6272A4">// 这行代码会让 Webpack 生成一个新的 chunk</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> HeavyComponent </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> React.</span><span style="color:#50FA7B">lazy</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#FF79C6"> import</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">./HeavyComponent</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">));</span></span></code></pre>
+<p><strong>3. 分割 Chunk</strong>：<code>splitChunks</code> 配置产生</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#F8F8F2">optimization: {</span></span>
+<span class="line"><span style="color:#F8F8F2">  splitChunks: {</span></span>
+<span class="line"><span style="color:#F8F8F2">    cacheGroups: {</span></span>
+<span class="line"><span style="color:#F8F8F2">      vendors: {</span></span>
+<span class="line"><span style="color:#F8F8F2">        test:</span><span style="color:#FF5555"> /</span><span style="color:#8BE9FD">[</span><span style="color:#F1FA8C">\\/</span><span style="color:#8BE9FD">]</span><span style="color:#F1FA8C">node_modules</span><span style="color:#8BE9FD">[</span><span style="color:#F1FA8C">\\/</span><span style="color:#8BE9FD">]</span><span style="color:#FF5555">/</span><span style="color:#F8F8F2">,</span></span>
+<span class="line"><span style="color:#F8F8F2">        name: </span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">vendors</span><span style="color:#E9F284">'</span><span style="color:#6272A4">  // → vendors chunk</span></span>
+<span class="line"><span style="color:#F8F8F2">      }</span></span>
+<span class="line"><span style="color:#F8F8F2">    }</span></span>
+<span class="line"><span style="color:#F8F8F2">  }</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<h3 id="24-bundle包">2.4 Bundle（包）</h3>
+<p><strong>定义</strong>：最终输出到 dist 目录的物理文件，是 Chunk 的落地形态。</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>dist/</span></span>
+<span class="line"><span>├── main.js           → 来自 main chunk</span></span>
+<span class="line"><span>├── admin.js          → 来自 admin chunk</span></span>
+<span class="line"><span>├── vendors.js        → 来自 vendors chunk</span></span>
+<span class="line"><span>├── HeavyComponent.js → 来自异步 chunk</span></span>
+<span class="line"><span>└── main.css          → CSS 提取后的文件</span></span></code></pre>
+<h3 id="25-完整流程示例">2.5 完整流程示例</h3>
+<p>假设有这样的项目结构和依赖关系：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6272A4">// index.js (入口)</span></span>
+<span class="line"><span style="color:#FF79C6">import</span><span style="color:#F8F8F2"> App </span><span style="color:#FF79C6">from</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">./App</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#FF79C6">import</span><span style="color:#F8F8F2"> { helper } </span><span style="color:#FF79C6">from</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">./utils</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#FF79C6">import</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">./style.css</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// App.jsx</span></span>
+<span class="line"><span style="color:#FF79C6">import</span><span style="color:#F8F8F2"> React </span><span style="color:#FF79C6">from</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">react</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#FF79C6">import</span><span style="color:#F8F8F2"> lodash </span><span style="color:#FF79C6">from</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">lodash</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> HeavyPage </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> React.</span><span style="color:#50FA7B">lazy</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#FF79C6"> import</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">./HeavyPage</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">)); </span><span style="color:#6272A4">// 动态导入</span></span></code></pre>
+<p>Webpack 配置了代码分割：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#8BE9FD;font-style:italic">module</span><span style="color:#F8F8F2">.</span><span style="color:#8BE9FD;font-style:italic">exports</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">  entry</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> { main</span><span style="color:#FF79C6">:</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">./src/index.js</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2"> },</span></span>
+<span class="line"><span style="color:#F8F8F2">  optimization</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">    splitChunks</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">      cacheGroups</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">        vendors</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> { test</span><span style="color:#FF79C6">:</span><span style="color:#FF5555"> /</span><span style="color:#8BE9FD">[</span><span style="color:#F1FA8C">\\/</span><span style="color:#8BE9FD">]</span><span style="color:#F1FA8C">node_modules</span><span style="color:#8BE9FD">[</span><span style="color:#F1FA8C">\\/</span><span style="color:#8BE9FD">]</span><span style="color:#FF5555">/</span><span style="color:#F8F8F2">, name</span><span style="color:#FF79C6">:</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">vendors</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2"> }</span></span>
+<span class="line"><span style="color:#F8F8F2">      }</span></span>
+<span class="line"><span style="color:#F8F8F2">    }</span></span>
+<span class="line"><span style="color:#F8F8F2">  }</span></span>
+<span class="line"><span style="color:#F8F8F2">};</span></span></code></pre>
+<p>整个转换过程：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>Modules (6个)                 Chunks (3个)               Bundles (4个文件)</span></span>
+<span class="line"><span>─────────────────────────────────────────────────────────────────────────────</span></span>
+<span class="line"><span>index.js      ─┐</span></span>
+<span class="line"><span>App.jsx       ─┼────────→     main chunk    ────────→    dist/main.js</span></span>
+<span class="line"><span>utils.js      ─┘</span></span>
+<span class="line"><span>style.css     ──────────→     (CSS提取)     ────────→    dist/main.css</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>react         ─┐</span></span>
+<span class="line"><span>react-dom     ─┼────────→     vendors chunk ────────→    dist/vendors.js</span></span>
+<span class="line"><span>lodash        ─┘</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>HeavyPage.jsx ──────────→     async chunk   ────────→    dist/HeavyPage.js</span></span></code></pre>
+<h3 id="26-三者对比总结">2.6 三者对比总结</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>维度</th><th>Module</th><th>Chunk</th><th>Bundle</th></tr></thead><tbody><tr><td><strong>是什么</strong></td><td>源文件</td><td>模块的逻辑集合</td><td>输出的物理文件</td></tr><tr><td><strong>存在位置</strong></td><td>源码目录（磁盘）</td><td>Webpack 内部（内存）</td><td>dist 目录（磁盘）</td></tr><tr><td><strong>数量关系</strong></td><td>最多</td><td>中等</td><td>最少或等于 Chunk 数</td></tr><tr><td><strong>可见性</strong></td><td>开发者编写</td><td>抽象概念，不可见</td><td>最终产物，可见</td></tr></tbody></table>
+<p><strong>简单记忆</strong>：Module 是输入，Chunk 是过程，Bundle 是输出。</p>
+<h3 id="27-为什么需要-chunk-这个中间概念">2.7 为什么需要 Chunk 这个中间概念？</h3>
+<p>Chunk 是实现<strong>代码分割</strong>的关键，它让我们可以：</p>
+<ol>
+<li><strong>按需加载</strong>：用户只下载当前页面需要的代码</li>
+<li><strong>缓存优化</strong>：第三方库单独打包，长期缓存</li>
+<li><strong>并行下载</strong>：多个小文件并行加载比单个大文件更快</li>
+</ol>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>没有代码分割：</span></span>
+<span class="line"><span>全部代码 → bundle.js (3MB) → 用户首屏等待 3 秒...</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>有代码分割：</span></span>
+<span class="line"><span>核心代码    → main.js (100KB)      → 首屏 0.5 秒加载完成</span></span>
+<span class="line"><span>第三方库    → vendors.js (500KB)   → 浏览器缓存，二次访问秒开</span></span>
+<span class="line"><span>异步页面    → page-a.js (200KB)    → 用户点击时才加载</span></span></code></pre>
+<hr>
+<h2 id="三loader-与-plugin-的区别">三、Loader 与 Plugin 的区别</h2>
+<p>有了前面的基础，我们再来看 Webpack 中两个最核心的扩展机制：Loader 和 Plugin。</p>
+<h3 id="31-在构建流程中的位置">3.1 在构建流程中的位置</h3>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>源文件 ──→ [Loader 处理] ──→ Module ──→ [打包] ──→ Chunk ──→ [Plugin 介入] ──→ Bundle</span></span>
+<span class="line"><span>           ↑                                              ↑</span></span>
+<span class="line"><span>        转换单个文件                                   控制整个流程</span></span></code></pre>
+<h3 id="32-loader加载器">3.2 Loader（加载器）</h3>
+<p><strong>本质</strong>：文件内容转换器。</p>
+<p><strong>工作方式</strong>：接收源文件内容，输出转换后的内容。</p>
+<p><strong>特点</strong>：</p>
+<ul>
+<li>作用于单个文件</li>
+<li>专注于”转换”这一件事</li>
+<li>可以链式调用（从右到左执行）</li>
+</ul>
+<p><strong>典型应用</strong>：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#8BE9FD;font-style:italic">module</span><span style="color:#F8F8F2">.</span><span style="color:#8BE9FD;font-style:italic">exports</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">  module</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">    rules</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> [</span></span>
+<span class="line"><span style="color:#F8F8F2">      {</span></span>
+<span class="line"><span style="color:#F8F8F2">        test</span><span style="color:#FF79C6">:</span><span style="color:#FF5555"> /</span><span style="color:#F1FA8C">\.jsx</span><span style="color:#FF79C6">?$</span><span style="color:#FF5555">/</span><span style="color:#F8F8F2">,</span></span>
+<span class="line"><span style="color:#F8F8F2">        use</span><span style="color:#FF79C6">:</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">babel-loader</span><span style="color:#E9F284">'</span><span style="color:#6272A4">  // ES6+/JSX → ES5</span></span>
+<span class="line"><span style="color:#F8F8F2">      },</span></span>
+<span class="line"><span style="color:#F8F8F2">      {</span></span>
+<span class="line"><span style="color:#F8F8F2">        test</span><span style="color:#FF79C6">:</span><span style="color:#FF5555"> /</span><span style="color:#F1FA8C">\.css</span><span style="color:#FF79C6">$</span><span style="color:#FF5555">/</span><span style="color:#F8F8F2">,</span></span>
+<span class="line"><span style="color:#F8F8F2">        use</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> [</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">style-loader</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">, </span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">css-loader</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">]  </span><span style="color:#6272A4">// CSS → JS 模块</span></span>
+<span class="line"><span style="color:#F8F8F2">      },</span></span>
+<span class="line"><span style="color:#F8F8F2">      {</span></span>
+<span class="line"><span style="color:#F8F8F2">        test</span><span style="color:#FF79C6">:</span><span style="color:#FF5555"> /</span><span style="color:#F1FA8C">\.scss</span><span style="color:#FF79C6">$</span><span style="color:#FF5555">/</span><span style="color:#F8F8F2">,</span></span>
+<span class="line"><span style="color:#F8F8F2">        use</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> [</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">style-loader</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">, </span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">css-loader</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">, </span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">sass-loader</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">]  </span><span style="color:#6272A4">// Sass → CSS → JS</span></span>
+<span class="line"><span style="color:#F8F8F2">      },</span></span>
+<span class="line"><span style="color:#F8F8F2">      {</span></span>
+<span class="line"><span style="color:#F8F8F2">        test</span><span style="color:#FF79C6">:</span><span style="color:#FF5555"> /</span><span style="color:#F1FA8C">\.</span><span style="color:#FFB86C">(</span><span style="color:#F1FA8C">png</span><span style="color:#FF79C6">|</span><span style="color:#F1FA8C">jpg</span><span style="color:#FFB86C">)</span><span style="color:#FF79C6">$</span><span style="color:#FF5555">/</span><span style="color:#F8F8F2">,</span></span>
+<span class="line"><span style="color:#F8F8F2">        use</span><span style="color:#FF79C6">:</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">file-loader</span><span style="color:#E9F284">'</span><span style="color:#6272A4">  // 图片 → 带 hash 的文件引用</span></span>
+<span class="line"><span style="color:#F8F8F2">      }</span></span>
+<span class="line"><span style="color:#F8F8F2">    ]</span></span>
+<span class="line"><span style="color:#F8F8F2">  }</span></span>
+<span class="line"><span style="color:#F8F8F2">};</span></span></code></pre>
+<h3 id="33-plugin插件">3.3 Plugin（插件）</h3>
+<p><strong>本质</strong>：构建流程的扩展点。</p>
+<p><strong>工作方式</strong>：监听 Webpack 生命周期事件，在特定时机执行自定义逻辑。</p>
+<p><strong>特点</strong>：</p>
+<ul>
+<li>作用于整个构建流程</li>
+<li>可以访问和修改 Compiler、Compilation 对象</li>
+<li>能力更强，可以做任何事情</li>
+</ul>
+<p><strong>典型应用</strong>：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> HtmlWebpackPlugin </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> require</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">html-webpack-plugin</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">);</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> MiniCssExtractPlugin </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> require</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">mini-css-extract-plugin</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">);</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> { BundleAnalyzerPlugin } </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> require</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">webpack-bundle-analyzer</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#8BE9FD;font-style:italic">module</span><span style="color:#F8F8F2">.</span><span style="color:#8BE9FD;font-style:italic">exports</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">  plugins</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> [</span></span>
+<span class="line"><span style="color:#6272A4">    // 自动生成 HTML 并注入打包后的 JS</span></span>
+<span class="line"><span style="color:#FF79C6;font-weight:bold">    new</span><span style="color:#50FA7B"> HtmlWebpackPlugin</span><span style="color:#F8F8F2">({ template</span><span style="color:#FF79C6">:</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">./src/index.html</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2"> }),</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">    // 将 CSS 提取为单独文件</span></span>
+<span class="line"><span style="color:#FF79C6;font-weight:bold">    new</span><span style="color:#50FA7B"> MiniCssExtractPlugin</span><span style="color:#F8F8F2">({ filename</span><span style="color:#FF79C6">:</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">[name].[hash].css</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2"> }),</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">    // 定义全局常量（编译时替换）</span></span>
+<span class="line"><span style="color:#FF79C6;font-weight:bold">    new</span><span style="color:#F8F8F2"> webpack.</span><span style="color:#50FA7B">DefinePlugin</span><span style="color:#F8F8F2">({</span></span>
+<span class="line"><span style="color:#E9F284">      '</span><span style="color:#F1FA8C">process.env.NODE_ENV</span><span style="color:#E9F284">'</span><span style="color:#FF79C6">:</span><span style="color:#BD93F9"> JSON</span><span style="color:#F8F8F2">.</span><span style="color:#50FA7B">stringify</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">production</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"><span style="color:#F8F8F2">    }),</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">    // 分析打包结果</span></span>
+<span class="line"><span style="color:#FF79C6;font-weight:bold">    new</span><span style="color:#50FA7B"> BundleAnalyzerPlugin</span><span style="color:#F8F8F2">()</span></span>
+<span class="line"><span style="color:#F8F8F2">  ]</span></span>
+<span class="line"><span style="color:#F8F8F2">};</span></span></code></pre>
+<h3 id="34-核心差异总结">3.4 核心差异总结</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>维度</th><th>Loader</th><th>Plugin</th></tr></thead><tbody><tr><td><strong>作用范围</strong></td><td>单个文件</td><td>整个构建流程</td></tr><tr><td><strong>调用时机</strong></td><td>模块被加载时</td><td>构建生命周期的各个阶段</td></tr><tr><td><strong>功能定位</strong></td><td>文件格式转换</td><td>流程扩展、资源优化</td></tr><tr><td><strong>输入输出</strong></td><td>文件内容 → 转换后的内容</td><td>访问完整的构建上下文</td></tr><tr><td><strong>配置位置</strong></td><td><code>module.rules</code></td><td><code>plugins</code></td></tr><tr><td><strong>能力边界</strong></td><td>只能处理文件内容</td><td>几乎无所不能</td></tr></tbody></table>
+<p><strong>一句话区分</strong>：Loader 让 Webpack 能够处理更多类型的文件，Plugin 让 Webpack 能够执行更多类型的任务。</p>
+<hr>
+<h2 id="四babel-plugin-与-webpack-plugin-的区别">四、Babel Plugin 与 Webpack Plugin 的区别</h2>
+<p>现在我们有了足够的背景知识，可以来分析 <code>addBabelPlugin</code> 和 <code>addWebpackPlugin</code> 的区别了。</p>
+<h3 id="41-它们分别是什么">4.1 它们分别是什么？</h3>
+<p>首先要明确：<strong>Babel Plugin 和 Webpack Plugin 是两个完全不同体系的东西</strong>。</p>
+<ul>
+<li><strong>Babel Plugin</strong>：Babel 转换器的扩展，用于修改 AST（抽象语法树）</li>
+<li><strong>Webpack Plugin</strong>：Webpack 构建流程的扩展，用于介入打包过程</li>
+</ul>
+<p>它们只是恰好都叫”Plugin”，但工作机制完全不同。</p>
+<h3 id="42-在构建流程中的位置">4.2 在构建流程中的位置</h3>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>源代码 (JSX/ES6+)</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>[babel-loader 调用 Babel]</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>[Babel Plugin 在这里工作] ← addBabelPlugin 注入的插件</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>转换后的 ES5 代码</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>[Webpack 继续打包流程]</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>[Webpack Plugin 在这里工作] ← addWebpackPlugin 注入的插件</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>最终 Bundle</span></span></code></pre>
+<h3 id="43-核心差异对比">4.3 核心差异对比</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>特性</th><th>Babel Plugin</th><th>Webpack Plugin</th></tr></thead><tbody><tr><td><strong>所属体系</strong></td><td>Babel</td><td>Webpack</td></tr><tr><td><strong>处理时机</strong></td><td>编译早期，在代码转换阶段</td><td>编译中后期，在打包/输出阶段</td></tr><tr><td><strong>处理对象</strong></td><td>单个文件的 AST</td><td>整个构建流程、所有资源</td></tr><tr><td><strong>操作方式</strong></td><td>遍历和修改语法树节点</td><td>监听生命周期钩子</td></tr><tr><td><strong>对代码的理解</strong></td><td>深度理解语法结构</td><td>只看到字符串/二进制内容</td></tr><tr><td><strong>修改粒度</strong></td><td>语法级别（精确到每个表达式）</td><td>文件级别（整个 chunk/bundle）</td></tr><tr><td><strong>典型用途</strong></td><td>语法转换、代码注入、Polyfill</td><td>资源优化、代码分割、生成文件</td></tr></tbody></table>
+<h3 id="44-处理-jsx-的方式差异">4.4 处理 JSX 的方式差异</h3>
+<p>假设我们想给所有 <code>&#x3C;Button></code> 添加 <code>disabled</code> 属性：</p>
+<p><strong>Babel Plugin 的方式</strong>（AST 层面）：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6272A4">// 源代码的 AST 表示（简化）</span></span>
+<span class="line"><span style="color:#F8F8F2">{</span></span>
+<span class="line"><span style="color:#F8F8F2">  type: </span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">JSXElement</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">,</span></span>
+<span class="line"><span style="color:#F8F8F2">  openingElement: {</span></span>
+<span class="line"><span style="color:#F8F8F2">    name: { name: </span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">Button</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2"> },</span></span>
+<span class="line"><span style="color:#F8F8F2">    attributes: []  </span><span style="color:#6272A4">// ← Babel Plugin 在这里添加 disabled 属性</span></span>
+<span class="line"><span style="color:#F8F8F2">  }</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<p>Babel Plugin 理解代码结构，知道这是一个 JSX 元素，可以精确地修改它的属性。</p>
+<p><strong>Webpack Plugin 的方式</strong>（字符串层面）：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6272A4">// Webpack Plugin 看到的是已经转换好的代码字符串</span></span>
+<span class="line"><span style="color:#E9F284">'</span><span style="color:#F1FA8C">React.createElement(Button, null, "Click")</span><span style="color:#E9F284">'</span></span>
+<span class="line"><span style="color:#6272A4">// ↓ 通过字符串替换</span></span>
+<span class="line"><span style="color:#E9F284">'</span><span style="color:#F1FA8C">React.createElement(Button, { disabled: true }, "Click")</span><span style="color:#E9F284">'</span></span></code></pre>
+<p>Webpack Plugin 不理解代码含义，只是做文本处理。</p>
+<hr>
+<h2 id="五问题分析为什么-babel-plugin-会导致白屏">五、问题分析：为什么 Babel Plugin 会导致白屏？</h2>
+<p>有了前面的知识铺垫，我们终于可以深入分析最初的问题了。</p>
+<h3 id="51-问题回顾">5.1 问题回顾</h3>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6272A4">// 方案一：使用 addBabelPlugin</span></span>
+<span class="line"><span style="color:#8BE9FD;font-style:italic">module</span><span style="color:#F8F8F2">.</span><span style="color:#8BE9FD;font-style:italic">exports</span><span style="color:#FF79C6"> =</span><span style="color:#50FA7B"> override</span><span style="color:#F8F8F2">(</span></span>
+<span class="line"><span style="color:#50FA7B">  addBabelPlugin</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">./my-disable-button-plugin</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"><span style="color:#F8F8F2">);</span></span>
+<span class="line"><span style="color:#6272A4">// 结果：编译成功，但页面白屏卡死，无报错</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// 方案二：使用 addWebpackPlugin</span></span>
+<span class="line"><span style="color:#8BE9FD;font-style:italic">module</span><span style="color:#F8F8F2">.</span><span style="color:#8BE9FD;font-style:italic">exports</span><span style="color:#FF79C6"> =</span><span style="color:#50FA7B"> override</span><span style="color:#F8F8F2">(</span></span>
+<span class="line"><span style="color:#50FA7B">  addWebpackPlugin</span><span style="color:#F8F8F2">(</span><span style="color:#FF79C6;font-weight:bold">new</span><span style="color:#50FA7B"> MyDisableButtonPlugin</span><span style="color:#F8F8F2">())</span></span>
+<span class="line"><span style="color:#F8F8F2">);</span></span>
+<span class="line"><span style="color:#6272A4">// 结果：编译成功，页面正常，Button 被禁用</span></span></code></pre>
+<h3 id="52-原因分析">5.2 原因分析</h3>
+<p>Babel Plugin 导致白屏的可能原因：</p>
+<p><strong>1. AST 转换产生了无效代码</strong></p>
+<p>Babel Plugin 操作的是语法树，如果转换逻辑有误，可能生成语法正确但运行时出错的代码：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#6272A4">// 原始代码</span></span>
+<span class="line"><span style="color:#F8F8F2">&#x3C;</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#50FA7B;font-style:italic"> onClick</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">handler</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">>Click&#x3C;/</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#F8F8F2">></span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// 错误的 AST 转换可能产生</span></span>
+<span class="line"><span style="color:#F8F8F2">&#x3C;</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#50FA7B;font-style:italic"> onClick</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">handler</span><span style="color:#FF79C6">}</span><span style="color:#50FA7B;font-style:italic"> disabled</span><span style="color:#50FA7B;font-style:italic"> disabled</span><span style="color:#FF79C6">={</span><span style="color:#BD93F9">true</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">>Click&#x3C;/</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#6272A4">// 重复属性可能导致 React 行为异常</span></span></code></pre>
+<p><strong>2. 产生了无限循环</strong></p>
+<p>如果你的 Babel Plugin 在修改节点后触发了重新访问：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6272A4">// 错误的插件写法</span></span>
+<span class="line"><span style="color:#F8F8F2">visitor: {</span></span>
+<span class="line"><span style="color:#50FA7B">  JSXOpeningElement</span><span style="color:#F8F8F2">(path) {</span></span>
+<span class="line"><span style="color:#6272A4">    // 添加属性后，如果不标记已处理，可能重复进入</span></span>
+<span class="line"><span style="color:#F8F8F2">    path.node.attributes.</span><span style="color:#50FA7B">push</span><span style="color:#F8F8F2">(</span><span style="color:#6272A4">/* disabled 属性 */</span><span style="color:#F8F8F2">);</span></span>
+<span class="line"><span style="color:#6272A4">    // 没有跳过逻辑，可能导致无限循环</span></span>
+<span class="line"><span style="color:#F8F8F2">  }</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<p><strong>3. 静态分析的局限性</strong></p>
+<p>Babel 只能做静态分析，无法处理动态情况：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#6272A4">// 这种情况 Babel 可以处理</span></span>
+<span class="line"><span style="color:#F8F8F2">&#x3C;</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#F8F8F2">>Click&#x3C;/</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#F8F8F2">></span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// 这种情况 Babel 无法正确处理</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> Comp </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> isAdmin </span><span style="color:#FF79C6">?</span><span style="color:#F8F8F2"> Button </span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> DisabledButton;</span></span>
+<span class="line"><span style="color:#F8F8F2">&#x3C;</span><span style="color:#8BE9FD;font-style:italic">Comp</span><span style="color:#F8F8F2">>Click&#x3C;/</span><span style="color:#8BE9FD;font-style:italic">Comp</span><span style="color:#F8F8F2">>  </span><span style="color:#6272A4">// Babel 不知道 Comp 是什么</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// 或者</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> props </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> { onClick</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> handler };</span></span>
+<span class="line"><span style="color:#F8F8F2">&#x3C;</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#FF79C6"> {...</span><span style="color:#F8F8F2">props</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">>Click&#x3C;/</span><span style="color:#8BE9FD;font-style:italic">Button</span><span style="color:#F8F8F2">>  </span><span style="color:#6272A4">// 展开运算符增加了复杂性</span></span></code></pre>
+<p><strong>4. 与其他 Babel 插件冲突</strong></p>
+<p>CRA 内置了很多 Babel 插件，你的插件可能与它们产生冲突，导致 AST 状态不一致。</p>
+<h3 id="53-为什么-webpack-plugin-能正常工作">5.3 为什么 Webpack Plugin 能正常工作？</h3>
+<ol>
+<li><strong>工作时机更晚</strong>：代码已经是合法的 JS，不存在 AST 一致性问题</li>
+<li><strong>操作更简单</strong>：通常只是字符串替换，不涉及复杂的语法理解</li>
+<li><strong>影响范围可控</strong>：可以精确控制处理哪些文件、哪些内容</li>
+</ol>
+<h3 id="54-调试建议">5.4 调试建议</h3>
+<p>如果你想继续使用 Babel Plugin，可以这样排查：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6272A4">// 添加日志，观察转换前后的代码</span></span>
+<span class="line"><span style="color:#8BE9FD;font-style:italic">module</span><span style="color:#F8F8F2">.</span><span style="color:#8BE9FD;font-style:italic">exports</span><span style="color:#FF79C6"> =</span><span style="color:#FF79C6"> function</span><span style="color:#F8F8F2">() {</span></span>
+<span class="line"><span style="color:#FF79C6">  return</span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">    visitor</span><span style="color:#FF79C6">:</span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#50FA7B">      JSXOpeningElement</span><span style="color:#F8F8F2">(</span><span style="color:#FFB86C;font-style:italic">path</span><span style="color:#F8F8F2">) {</span></span>
+<span class="line"><span style="color:#FF79C6">        if</span><span style="color:#F8F8F2"> (path.node.name.name </span><span style="color:#FF79C6">===</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">Button</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">) {</span></span>
+<span class="line"><span style="color:#F8F8F2">          console.</span><span style="color:#50FA7B">log</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">Before:</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">, path.</span><span style="color:#50FA7B">toString</span><span style="color:#F8F8F2">());</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">          // 检查是否已经有 disabled 属性</span></span>
+<span class="line"><span style="color:#FF79C6">          const</span><span style="color:#F8F8F2"> hasDisabled </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> path.node.attributes.</span><span style="color:#50FA7B">some</span><span style="color:#F8F8F2">(</span></span>
+<span class="line"><span style="color:#FFB86C;font-style:italic">            attr</span><span style="color:#FF79C6"> =></span><span style="color:#F8F8F2"> attr.name?.name </span><span style="color:#FF79C6">===</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">disabled</span><span style="color:#E9F284">'</span></span>
+<span class="line"><span style="color:#F8F8F2">          );</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">          if</span><span style="color:#F8F8F2"> (</span><span style="color:#FF79C6">!</span><span style="color:#F8F8F2">hasDisabled) {</span></span>
+<span class="line"><span style="color:#6272A4">            // 添加属性的逻辑</span></span>
+<span class="line"><span style="color:#F8F8F2">          }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F8F8F2">          console.</span><span style="color:#50FA7B">log</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">After:</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">, path.</span><span style="color:#50FA7B">toString</span><span style="color:#F8F8F2">());</span></span>
+<span class="line"><span style="color:#F8F8F2">        }</span></span>
+<span class="line"><span style="color:#F8F8F2">      }</span></span>
+<span class="line"><span style="color:#F8F8F2">    }</span></span>
+<span class="line"><span style="color:#F8F8F2">  };</span></span>
+<span class="line"><span style="color:#F8F8F2">};</span></span></code></pre>
+<hr>
+<h2 id="六最佳实践如何选择合适的方案">六、最佳实践：如何选择合适的方案？</h2>
+<h3 id="61-根据需求选择">6.1 根据需求选择</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>需求场景</th><th>推荐方案</th><th>原因</th></tr></thead><tbody><tr><td>语法转换（如 JSX → JS）</td><td>Babel Plugin</td><td>需要理解语法结构</td></tr><tr><td>添加 Polyfill</td><td>Babel Plugin</td><td>需要分析代码中使用的特性</td></tr><tr><td>简单的代码替换</td><td>Webpack Plugin</td><td>字符串处理更简单可控</td></tr><tr><td>全局注入变量</td><td>Webpack DefinePlugin</td><td>成熟方案，无需自己实现</td></tr><tr><td>动态控制组件行为</td><td>运行时方案（HOC/Context）</td><td>更灵活，可响应状态变化</td></tr></tbody></table>
+<h3 id="62-禁用-button-的推荐方案">6.2 禁用 Button 的推荐方案</h3>
+<p>对于”批量禁用 Button”这个需求，我推荐使用<strong>运行时方案</strong>：</p>
+<p><strong>方案一：高阶组件（HOC）</strong></p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#6272A4">// withDisabled.js</span></span>
+<span class="line"><span style="color:#FF79C6">export</span><span style="color:#FF79C6"> const</span><span style="color:#50FA7B"> withDisabled</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> (</span><span style="color:#FFB86C;font-style:italic">Component</span><span style="color:#F8F8F2">) </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> (</span><span style="color:#FFB86C;font-style:italic">props</span><span style="color:#F8F8F2">) </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> (</span></span>
+<span class="line"><span style="color:#F8F8F2">  &#x3C;</span><span style="color:#8BE9FD;font-style:italic">Component</span><span style="color:#FF79C6"> {...</span><span style="color:#F8F8F2">props</span><span style="color:#FF79C6">}</span><span style="color:#50FA7B;font-style:italic"> disabled</span><span style="color:#FF79C6">={</span><span style="color:#BD93F9">true</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2"> /></span></span>
+<span class="line"><span style="color:#F8F8F2">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// 使用</span></span>
+<span class="line"><span style="color:#FF79C6">import</span><span style="color:#F8F8F2"> { Button } </span><span style="color:#FF79C6">from</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">antd</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">;</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> DisabledButton </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> withDisabled</span><span style="color:#F8F8F2">(Button);</span></span></code></pre>
+<p><strong>方案二：Context 全局控制</strong></p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#6272A4">// DisableContext.js</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> DisableContext </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> React.</span><span style="color:#50FA7B">createContext</span><span style="color:#F8F8F2">(</span><span style="color:#BD93F9">false</span><span style="color:#F8F8F2">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">export</span><span style="color:#FF79C6"> const</span><span style="color:#50FA7B"> DisableProvider</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> ({ </span><span style="color:#FFB86C;font-style:italic">disabled</span><span style="color:#F8F8F2">, </span><span style="color:#FFB86C;font-style:italic">children</span><span style="color:#F8F8F2"> }) </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> (</span></span>
+<span class="line"><span style="color:#F8F8F2">  &#x3C;</span><span style="color:#8BE9FD;font-style:italic">DisableContext.Provider</span><span style="color:#50FA7B;font-style:italic"> value</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">disabled</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#FF79C6">    {</span><span style="color:#F8F8F2">children</span><span style="color:#FF79C6">}</span></span>
+<span class="line"><span style="color:#F8F8F2">  &#x3C;/</span><span style="color:#8BE9FD;font-style:italic">DisableContext.Provider</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">export</span><span style="color:#FF79C6"> const</span><span style="color:#50FA7B"> useDisabled</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> () </span><span style="color:#FF79C6">=></span><span style="color:#50FA7B"> useContext</span><span style="color:#F8F8F2">(DisableContext);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// Button 组件内部</span></span>
+<span class="line"><span style="color:#FF79C6">const</span><span style="color:#50FA7B"> Button</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> (</span><span style="color:#FFB86C;font-style:italic">props</span><span style="color:#F8F8F2">) </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#F8F8F2"> globalDisabled </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> useDisabled</span><span style="color:#F8F8F2">();</span></span>
+<span class="line"><span style="color:#FF79C6">  return</span><span style="color:#F8F8F2"> &#x3C;</span><span style="color:#FF79C6">button</span><span style="color:#FF79C6"> {...</span><span style="color:#F8F8F2">props</span><span style="color:#FF79C6">}</span><span style="color:#50FA7B;font-style:italic"> disabled</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">props.disabled </span><span style="color:#FF79C6">||</span><span style="color:#F8F8F2"> globalDisabled</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2"> />;</span></span>
+<span class="line"><span style="color:#F8F8F2">};</span></span></code></pre>
+<p><strong>方案三：如果必须用编译时方案</strong></p>
+<p>使用 Webpack Plugin 做字符串替换会更稳定，但要注意边界情况。</p>
+<hr>
+<h2 id="七总结">七、总结</h2>
+<p>回顾整篇文章，我们从一个实际问题出发，系统性地梳理了前端工程化的核心概念：</p>
+<ol>
+<li>
+<p><strong>编译时 vs 运行时</strong>：编译时在 Node.js 中把源码变成静态资源，运行时在浏览器中执行代码</p>
+</li>
+<li>
+<p><strong>Module → Chunk → Bundle</strong>：源文件经过 Webpack 处理，先按逻辑分组成 Chunk，最终输出为 Bundle 文件</p>
+</li>
+<li>
+<p><strong>Loader vs Plugin</strong>：Loader 转换单个文件内容，Plugin 扩展整个构建流程</p>
+</li>
+<li>
+<p><strong>Babel Plugin vs Webpack Plugin</strong>：前者操作 AST 修改代码语法，后者介入 Webpack 生命周期</p>
+</li>
+</ol>
+<p>理解这些概念后，我们就能解释最初的问题：Babel Plugin 操作 AST 容易出现转换错误或与其他插件冲突，而 Webpack Plugin 工作在更后期，操作更简单直接。</p>
+<p>选择合适的方案，需要考虑需求的本质：是编译时确定还是运行时动态？是需要理解语法还是简单替换？搞清楚这些，就能做出正确的技术选型。</p>
+<hr>
+<h2 id="参考资料">参考资料</h2>
+<ul>
+<li><a href="https://webpack.js.org/concepts/">Webpack 官方文档 - Concepts</a></li>
+<li><a href="https://webpack.js.org/loaders/">Webpack 官方文档 - Loaders</a></li>
+<li><a href="https://webpack.js.org/plugins/">Webpack 官方文档 - Plugins</a></li>
+<li><a href="https://babeljs.io/docs/plugins">Babel 官方文档 - Plugins</a></li>
+<li><a href="https://github.com/jamiebuilds/babel-handbook/blob/master/translations/zh-Hans/plugin-handbook.md">Babel 插件手册</a></li>
+<li><a href="https://github.com/arackaf/customize-cra">customize-cra 文档</a></li>
+</ul>  </article> <footer class="mt-5">  <div class="flex items-center gap-2">  <a title="下一篇: 【#1】2025-11-23周报" href="/posts/blog"> 下一篇: 【#1】2025-11-23周报 <span class="inline-block vertical-mid i-mdi-chevron-double-right w-4 h-4"></span> </a> </div> </footer>    </main> <footer class="transition-swup-footer py-7.5" lg="row-2-3 col-2-3" data-astro-cid-e5lvscu2> <p data-astro-cid-gcn2mc3v>© 2026 <a target="_blank" href="https://cathlee.github.io/">Yuer</a></p><p data-astro-cid-gcn2mc3v>Theme <a target="_blank" href="https://github.com/Moeyua/astro-theme-typography">Typography</a> by <a target="_blank" href="https://moeyua.com">Moeyua</a></p><p data-astro-cid-gcn2mc3v>Proudly published with <a target="_blank" href="https://astro.build/">Astro</a></p> </footer> <script type="module">document.addEventListener("animationend",e,!1);function e(){document.documentElement.classList.remove("animation-prepared"),document.removeEventListener("animationend",e,!1)}</script>  </body> </html> <script type="module">function u(e){const t=document.createElement("pre");return t.style.width="1px",t.style.height="1px",t.style.position="fixed",t.style.top="5px",t.textContent=e,t}function a(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e.textContent||"");const t=getSelection();if(t==null)return Promise.reject(new Error);t.removeAllRanges();const n=document.createRange();return n.selectNodeContents(e),t.addRange(n),document.execCommand("copy"),t.removeAllRanges(),Promise.resolve()}function i(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e);const t=document.body;if(!t)return Promise.reject(new Error);const n=u(e);return t.appendChild(n),a(n),t.removeChild(n),Promise.resolve()}async function d(e){const t=e.getAttribute("for"),n=e.getAttribute("value");function o(){e.dispatchEvent(new CustomEvent("clipboard-copy",{bubbles:!0}))}if(e.getAttribute("aria-disabled")!=="true"){if(n)await i(n),o();else if(t){const r="getRootNode"in Element.prototype?e.getRootNode():e.ownerDocument;if(!(r instanceof Document||"ShadowRoot"in window&&r instanceof ShadowRoot))return;const c=r.getElementById(t);c&&(await p(c),o())}}}function p(e){return e instanceof HTMLInputElement||e instanceof HTMLTextAreaElement?i(e.value):e instanceof HTMLAnchorElement&&e.hasAttribute("href")?i(e.href):a(e)}function f(e){const t=e.currentTarget;t instanceof HTMLElement&&d(t)}function l(e){if(e.key===" "||e.key==="Enter"){const t=e.currentTarget;t instanceof HTMLElement&&(e.preventDefault(),d(t))}}function m(e){e.currentTarget.addEventListener("keydown",l)}function y(e){e.currentTarget.removeEventListener("keydown",l)}class h extends HTMLElement{static define(t="clipboard-copy",n=customElements){return n.define(t,this),this}constructor(){super(),this.addEventListener("click",f),this.addEventListener("focus",m),this.addEventListener("blur",y)}connectedCallback(){this.hasAttribute("tabindex")||this.setAttribute("tabindex","0"),this.hasAttribute("role")||this.setAttribute("role","button")}get value(){return this.getAttribute("value")||""}set value(t){this.setAttribute("value",t)}}const s=typeof globalThis<"u"?globalThis:window;try{s.ClipboardCopyElement=h.define()}catch(e){if(!(s.DOMException&&e instanceof DOMException&&e.name==="NotSupportedError")&&!(e instanceof ReferenceError))throw e}document.addEventListener("clipboard-copy",e=>{const n=e.target.querySelector(".icon");n.classList.replace("i-mdi-content-copy","i-mdi-check"),setTimeout(()=>{n.classList.replace("i-mdi-check","i-mdi-content-copy")},1500)});const b=Array.from(document.querySelectorAll("pre")),g="<div class='i-mdi-content-copy icon text-white'></div>";for(const e of b){const t=document.createElement("div");t.className="code-container";const n=document.createElement("clipboard-copy"),o=e.querySelector("code");n.value=o?.textContent??"",n.className="clipboard-copy",n.innerHTML=g,e.appendChild(n),e.parentNode?.insertBefore(t,e),t.appendChild(e)}</script> 

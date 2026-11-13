@@ -1,0 +1,309 @@
+<!DOCTYPE html><html lang="zh-cn" class="animation-prepared" data-astro-cid-e5lvscu2> <head><title>【AI基建】pi-ai 之Provider鉴权解析--观点纠错</title><meta charset="utf-8"><link rel="canonical" href="https://cathlee.github.io/posts/ai%E5%9F%BA%E5%BB%BApi-ai-%E4%B9%8Bprovider%E9%89%B4%E6%9D%83%E8%A7%A3%E6%9E%90--%E8%A7%82%E7%82%B9%E7%BA%A0%E9%94%99/"><meta name="description" content="pi-ai Provider 鉴权解析中的关键语义纠错"><meta name="robots" content="index, follow"><meta property="og:title" content="【AI基建】pi-ai 之Provider鉴权解析--观点纠错"><meta property="og:type" content="article"><meta property="og:image" content="https://cathlee.github.io/placeholder.png"><meta property="og:url" content="https://cathlee.github.io/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="我的观点们" href="https://cathlee.github.io/atom.xml"><meta name="viewport" content="width=device-width"><meta name="generator" content="Astro v5.16.0"><meta name="twitter:image:src" content="https://cathlee.github.io/placeholder.png"><meta name="twitter:image:alt" content="pi-ai Provider 鉴权解析中的关键语义纠错"><meta name="twitter:creator" content="@moeyua13"><meta name="twitter:site" content="@moeyua13"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="【AI基建】pi-ai 之Provider鉴权解析--观点纠错"><meta name="twitter:description" content="pi-ai Provider 鉴权解析中的关键语义纠错"><script>(function(){const theme = "system";
+
+  function updateTheme() {
+    // 优先使用 localStorage 中保存的主题
+    const stored = localStorage.getItem('theme')
+    let isDark = false
+
+    if (stored) {
+      // 如果用户手动设置了主题，使用保存的值
+      isDark = stored === 'dark'
+    } else if (theme === 'system' || !theme) {
+      // 否则根据系统偏好
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    } else {
+      // 使用配置的主题
+      isDark = theme === 'dark'
+    }
+
+    document.documentElement.classList.toggle('dark', isDark)
+  }
+
+  // 初始化主题
+  updateTheme()
+
+  // 监听系统主题变化（仅当用户未手动设置时）
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      document.documentElement.classList.toggle('dark', e.matches)
+    }
+  })
+})();</script><link rel="stylesheet" href="/_astro/_page_.BbSfUOGU.css">
+<style>.tk-meta-input{background-color:#fff}.code-container{position:relative}.clipboard-copy{position:absolute;top:.5rem;right:.5rem;width:1.75rem;height:1.75rem;display:flex;justify-content:center;align-items:center;border-radius:.25rem}.clipboard-copy:hover{background-color:#30363d}
+</style><script type="module" src="/_astro/page.D1hK2OoH.js"></script></head> <body class="h-100vh max-w-1200px min-w-390px mx-a" p="7.5 lg:y-0 lg:x-20" lg="grid gap-x-6 cols-[3fr_1fr] rows-[1fr_9rem]" data-astro-cid-e5lvscu2> <header class="transition-swup-header flex flex-col gap-2.5" m="7.5 lg:x-0 lg:t-20 lg:b-4" lg="row-1-2 col-2-3 justify-between items-start" data-astro-cid-e5lvscu2> <hgroup lg="write-vertical-right items-start b-l-2px b-l-primary text-left" flex="~ col gap-2.5" class="cursor-pointer text-center duration-800 ease-in-out"> <a class="not-underline-hover duration-800 ease-in-out" lg:p="x-2.5 b-12 hover:t-3.75 hover:b-8.75" hover:lg=" bg-primary color-background" href="/"> <h3 class="text-5 font-extrabold font-header">Some Tech&#39;s Blog</h3> <h1 class="text-8 font-extrabold font-header">我的观点们</h1> </a> </hgroup> <nav class="text-center font-bold" flex="~ col gap-4"> <ul lg="flex-col items-start text-4" class="text-3.5" flex="~ row gap-2 justify-center"> <li> <a class="" href="/"> 文章 </a> </li><li> <a class="" href="/archive"> 归档 </a> </li><li> <a class="" href="/categories"> 分类 </a> </li><li> <a class="" href="/about"> 关于 </a> </li><li> <a class="" href="/gallery"> 影集 </a> </li> </ul> <ul flex="~ row gap-1 justify-center"> <li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="github" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-github w-6 h-6">github</span> </a> </li><li> <a href="/atom.xml" target="_blank" title="rss" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-rss w-6 h-6">rss</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="twitter" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-twitter w-6 h-6">twitter</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="mastodon" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-mastodon w-6 h-6">mastodon</span> </a> </li> <li> <button id="theme-toggle" class="inline-flex items-center cursor-pointer border-none bg-transparent p-0 transition-transform duration-200 hover:scale-110 active:scale-95 not-underline-hover" aria-label="切换深色/浅色模式" title="切换主题"> <span class="sun-icon i-mdi-weather-sunny w-6 h-6"></span> <span class="moon-icon i-mdi-weather-night w-6 h-6 hidden"></span> </button> <script type="module">function a(e){document.addEventListener("swup:page:view",e)}function u(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):e(),a(e)}const i="theme",d="dark";function c(){if(typeof localStorage<"u"){const e=localStorage.getItem(i);if(e==="light"||e==="dark")return e}return typeof window<"u"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}function s(e){typeof localStorage<"u"&&localStorage.setItem(i,e),typeof document<"u"&&(e==="dark"?document.documentElement.classList.add(d):document.documentElement.classList.remove(d))}function m(){const t=c()==="dark"?"light":"dark";return s(t),t}function l(){const e=c();s(e)}function f(){const e=document.getElementById("theme-toggle"),t=e?.querySelector(".sun-icon"),n=e?.querySelector(".moon-icon");l();function o(){const r=document.documentElement.classList.contains("dark");t&&n&&(r?(t.classList.add("hidden"),n.classList.remove("hidden")):(t.classList.remove("hidden"),n.classList.add("hidden")))}o(),e?.addEventListener("click",()=>{m(),o()})}u(f);</script> </li> </ul> </nav> </header> <main class="transition-swup-main overflow-y-scroll scrollbar-hide outline-none" lg="row-1-3 col-1-2 py-20 " data-astro-cid-e5lvscu2>   <article class="prose"> <header flex="~ col gap-2"> <h1 class="post-title"> <a class="not-prose" href="/posts/ai基建pi-ai-之provider鉴权解析--观点纠错/">【AI基建】pi-ai 之Provider鉴权解析--观点纠错</a> </h1> <div class="text-3.5"> <span>发布于</span> <time>2025-08-22</time> <a href="/categories/AI基建">
+# AI基建 </a> </div> </header>  <h1 id="pi-ai-provider-鉴权解析观点纠错">pi-ai Provider 鉴权解析：观点纠错</h1>
+<h2 id="总体判断">总体判断</h2>
+<p>你的整体方向已经接近正确：</p>
+<ul>
+<li>能区分 <code>task</code>、<code>queued</code>、<code>tail</code> 和对外返回 Promise 的不同职责；</li>
+<li>理解同一 provider 的凭证修改需要 FIFO；</li>
+<li>理解 async IIFE 用于立即创建代表完整任务的 Promise；</li>
+<li>理解 <code>tail.then()</code> 是异步注册，不会阻塞后面的 <code>return</code>。</li>
+</ul>
+<p>但还有五个关键语义需要修正：</p>
+<ol>
+<li>abort 不是“用户手动 reject”。</li>
+<li>signal abort 后，<code>queued</code> 不一定停止执行。</li>
+<li><code>catch(() => {})</code> 不是把错误留给 <code>raceWithAbortSignal()</code> 集中处理。</li>
+<li><code>tail</code> 不是函数或普通 flag，而是 Promise 队尾哨兵。</li>
+<li>FIFO 并不是“前一个失败后面的任务都不执行”，而是恰好保证后续任务仍能执行。</li>
+</ol>
+<hr>
+<h2 id="纠错-1racewithabortsignal-不是判断用户是否手动-reject">纠错 1：<code>raceWithAbortSignal()</code> 不是判断用户是否手动 reject</h2>
+<h3 id="原观点">原观点</h3>
+<blockquote>
+<p>统一使用 <code>raceWithAbortSignal</code> 是为了判断用户是否有手动 reject 的行为，如果有则无需执行 queued 当前队列所代表的任务，直接返回。</p>
+</blockquote>
+<h3 id="判断">判断</h3>
+<p><strong>不准确。</strong></p>
+<h3 id="正确理解">正确理解</h3>
+<p><code>AbortSignal</code> 和 Promise rejection 是两个不同概念：</p>
+<ul>
+<li><code>reject(error)</code>：让某个 Promise 进入 rejected 状态。</li>
+<li><code>controller.abort()</code>：让对应的 <code>AbortSignal</code> 进入 aborted 状态并触发 <code>abort</code> 事件。</li>
+</ul>
+<p><code>raceWithAbortSignal()</code> 监听的是：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>operation Promise 完成</span></span>
+<span class="line"><span>或者</span></span>
+<span class="line"><span>signal abort</span></span></code></pre>
+<p>不是监听“用户是否手动 reject”。</p>
+<h3 id="还要注意">还要注意</h3>
+<p>signal abort 后，不一定“不执行 queued”。</p>
+<p>分两种情况：</p>
+<h4 id="queued-仍在等待-previous">queued 仍在等待 previous</h4>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">await</span><span style="color:#F8F8F2"> previous.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span>
+<span class="line"><span style="color:#F8F8F2">signal.</span><span style="color:#50FA7B">throwIfAborted</span><span style="color:#F8F8F2">();</span></span>
+<span class="line"><span style="color:#FF79C6">return</span><span style="color:#50FA7B"> task</span><span style="color:#F8F8F2">();</span></span></code></pre>
+<p>这时 abort 会让 <code>signal.throwIfAborted()</code> 抛错，<code>task()</code> 不会开始。</p>
+<h4 id="task-已经开始">task 已经开始</h4>
+<p>这时 <code>raceWithAbortSignal()</code> 只能让调用方停止等待。底层 task 是否停止，取决于 task 是否主动响应 signal。</p>
+<h3 id="推荐表述">推荐表述</h3>
+<blockquote>
+<p><code>raceWithAbortSignal()</code> 让 operation 与 signal abort 竞争。signal 先 abort 时，调用方立即收到取消错误；如果 task 尚未开始，后续的 <code>throwIfAborted()</code> 会阻止它开始；如果 task 已经开始，race 本身不保证终止底层任务。</p>
+</blockquote>
+<hr>
+<h2 id="纠错-2racewithabortsignal-不是统一集中报错">纠错 2：<code>raceWithAbortSignal()</code> 不是“统一集中报错”</h2>
+<h3 id="原观点-1">原观点</h3>
+<blockquote>
+<p>前面的错误先通过 <code>.catch(() => {})</code> 不处理，最后在 <code>raceWithAbortSignal</code> 中统一处理。</p>
+</blockquote>
+<h3 id="判断-1">判断</h3>
+<p><strong>错误。</strong></p>
+<h3 id="正确理解-1">正确理解</h3>
+<p>代码里存在三个不同的错误通道，不能混为一谈。</p>
+<h4 id="previouscatch-"><code>previous.catch(() => {})</code></h4>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">await</span><span style="color:#F8F8F2"> previous.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span></code></pre>
+<p>作用：忽略前一个任务的失败状态，让当前任务仍然可以执行。</p>
+<p>前一个任务的错误已经通过前一个调用自己的返回 Promise 交给了前一个调用方。当前任务不应该再次继承它。</p>
+<h4 id="queuedcatch-"><code>queued.catch(() => {})</code></h4>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> tail </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> queued.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span></code></pre>
+<p>作用：产生一个不会 rejected 的内部队尾 <code>tail</code>，用于 FIFO 排队和完成清理。</p>
+<p>它没有改变原始 <code>queued</code>：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>queued 仍然保留原始错误</span></span>
+<span class="line"><span>tail 吞掉该错误并正常完成</span></span></code></pre>
+<h4 id="racewithabortsignalqueued-signal"><code>raceWithAbortSignal(queued, signal)</code></h4>
+<p>作用：将“当前 queued 的成功/失败”或“当前 signal 的取消”返回给当前调用方。</p>
+<p>它不会收集之前所有被 catch 的错误，也不是错误聚合器。</p>
+<h3 id="推荐表述-1">推荐表述</h3>
+<blockquote>
+<p><code>previous.catch()</code> 用于隔离前一任务的失败；<code>queued.catch()</code> 用于生成不会失败的内部队尾；原始 <code>queued</code> 的错误仍由 <code>raceWithAbortSignal()</code> 返回给当前调用方。它们分别服务于队列连续性、内部状态管理和当前调用结果，并非统一延迟报错。</p>
+</blockquote>
+<hr>
+<h2 id="纠错-3tail-不是函数也不只是布尔-flag">纠错 3：<code>tail</code> 不是函数，也不只是布尔 flag</h2>
+<h3 id="原观点-2">原观点</h3>
+<blockquote>
+<p>这里有个尾巴 tail 的函数 flag。</p>
+</blockquote>
+<h3 id="判断-2">判断</h3>
+<p><strong>不准确。</strong></p>
+<h3 id="正确理解-2">正确理解</h3>
+<p><code>tail</code> 是一个 Promise 对象：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> tail</span><span style="color:#FF79C6">:</span><span style="color:#8BE9FD;font-style:italic"> Promise</span><span style="color:#F8F8F2">&#x3C;</span><span style="color:#FFB86C;font-style:italic">T</span><span style="color:#FF79C6"> |</span><span style="color:#8BE9FD;font-style:italic"> void</span><span style="color:#F8F8F2">> </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> queued.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span></code></pre>
+<p>更准确地说，它是“内部队尾哨兵 Promise”：</p>
+<ul>
+<li>它的 pending 表示真实任务尚未结束；</li>
+<li>它的 fulfilled 表示真实任务已经结束；</li>
+<li>它不会 rejected，因为错误被 catch 转换成正常完成；</li>
+<li>它的对象引用还用于判断自己是否仍是最新队尾。</li>
+</ul>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#BD93F9;font-style:italic">this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">get</span><span style="color:#F8F8F2">(providerId) </span><span style="color:#FF79C6">===</span><span style="color:#F8F8F2"> tail</span></span></code></pre>
+<p>这个判断比较的是 Promise 对象引用，不是某个布尔状态。</p>
+<h3 id="推荐表述-2">推荐表述</h3>
+<blockquote>
+<p><code>tail</code> 是从 <code>queued</code> 派生出的、不会失败的队尾 Promise。它既作为后续任务的等待对象，也作为清理时判断“当前任务是否仍是最新队尾”的引用哨兵。</p>
+</blockquote>
+<hr>
+<h2 id="纠错-4tailthen-不处理-task">纠错 4：<code>tail.then()</code> 不处理 task</h2>
+<h3 id="原观点-3">原观点</h3>
+<blockquote>
+<p><code>tail.then</code> 去处理 task 任务；queue 执行 task 完成之后删除 tail。</p>
+</blockquote>
+<h3 id="判断-3">判断</h3>
+<p>前半句<strong>错误</strong>，后半句方向正确但表达需要精确。</p>
+<h3 id="正确理解-3">正确理解</h3>
+<p>真正执行 task 的地方只有：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">return</span><span style="color:#50FA7B"> task</span><span style="color:#F8F8F2">();</span></span></code></pre>
+<p><code>tail.then()</code> 只注册清理回调：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">void</span><span style="color:#F8F8F2"> tail.</span><span style="color:#50FA7B">then</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#FF79C6">  if</span><span style="color:#F8F8F2"> (</span><span style="color:#BD93F9;font-style:italic">this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">get</span><span style="color:#F8F8F2">(providerId) </span><span style="color:#FF79C6">===</span><span style="color:#F8F8F2"> tail) {</span></span>
+<span class="line"><span style="color:#BD93F9;font-style:italic">    this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">delete</span><span style="color:#F8F8F2">(providerId);</span></span>
+<span class="line"><span style="color:#F8F8F2">  }</span></span>
+<span class="line"><span style="color:#F8F8F2">});</span></span></code></pre>
+<p>任务结束后删除的不是局部变量 <code>tail</code>。局部变量会由垃圾回收自动处理。这里删除的是：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#BD93F9;font-style:italic">this</span><span style="color:#F8F8F2">.</span><span style="color:#50FA7B">chains</span><span style="color:#F1FA8C">` Map 中的 providerId 条目</span></span></code></pre>
+<p>而且只有它仍是最新队尾时才删除。</p>
+<h3 id="推荐表述-3">推荐表述</h3>
+<blockquote>
+<p><code>task()</code> 在 <code>queued</code> 的 async IIFE 中执行一次。<code>tail.then()</code> 只在任务完成后检查该 tail 是否仍是 provider 的最新队尾；如果是，就删除 <code>chains</code> 中对应的 providerId 记录。</p>
+</blockquote>
+<hr>
+<h2 id="纠错-5fifo-后前一个任务失败不会阻止后面的任务">纠错 5：FIFO 后，前一个任务失败不会阻止后面的任务</h2>
+<h3 id="原观点-4">原观点</h3>
+<blockquote>
+<p>FIFO 是为了让任务串行，前一个失败后面的任务都不会执行。</p>
+</blockquote>
+<h3 id="判断-4">判断</h3>
+<p>前半句正确，后半句正好相反。</p>
+<h3 id="正确理解-4">正确理解</h3>
+<p>FIFO 确实保证同一 provider 的任务按照进入顺序串行执行。</p>
+<p>但是这行代码：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">await</span><span style="color:#F8F8F2"> previous.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span></code></pre>
+<p>明确保证：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>前一个成功 → 当前任务继续</span></span>
+<span class="line"><span>前一个失败 → 吞掉前一个任务对当前链的影响，当前任务仍继续</span></span></code></pre>
+<p>前一个任务的调用方仍会收到前一个任务的错误，只是后一个任务不继承它。</p>
+<h3 id="推荐表述-4">推荐表述</h3>
+<blockquote>
+<p>FIFO 保证同一 provider 的凭证写操作按进入顺序逐个执行。前一个任务无论成功还是失败，后一个任务都要等它真正结束；结束后，后一个任务仍然可以继续执行。</p>
+</blockquote>
+<hr>
+<h2 id="纠错-6queued-不是立即开始执行-task">纠错 6：<code>queued</code> 不是“立即开始执行 task”</h2>
+<h3 id="原注释">原注释</h3>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#F8F8F2">})(); </span><span style="color:#6272A4">// 等待上一个任务完成后，立即开始执行新的任务</span></span></code></pre>
+<h3 id="判断-5">判断</h3>
+<p>基本方向正确，但“立即”可能造成误解。</p>
+<h3 id="正确理解-5">正确理解</h3>
+<p>创建 async IIFE 时，它会立即开始运行，但会先停在：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">await</span><span style="color:#F8F8F2"> previous.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span></code></pre>
+<p>只有 previous 完成后，才会检查 signal 并调用 task：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>创建 queued Promise</span></span>
+<span class="line"><span>→ 等待 previous</span></span>
+<span class="line"><span>→ 检查 signal</span></span>
+<span class="line"><span>→ task() 开始</span></span></code></pre>
+<h3 id="推荐注释">推荐注释</h3>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#6272A4">// Represent the current queued operation: wait for the previous tail,</span></span>
+<span class="line"><span style="color:#6272A4">// re-check cancellation, then execute task once.</span></span></code></pre>
+<p>或者中文：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#6272A4">// 当前排队任务：等待前一队尾结束，重新检查取消状态，然后执行 task 一次。</span></span></code></pre>
+<hr>
+<h2 id="纠错-7thischainssetproviderid-tail-不是重置尾巴">纠错 7：<code>this.chains.set(providerId, tail)</code> 不是“重置尾巴”</h2>
+<h3 id="原观点-5">原观点</h3>
+<blockquote>
+<p>把 queue 重置为尾巴；把当前尾部设置为当前链的尾部。</p>
+</blockquote>
+<h3 id="判断-6">判断</h3>
+<p>表达不够准确。</p>
+<h3 id="正确理解-6">正确理解</h3>
+<p>这里没有修改 <code>queued</code>，也没有把 queued “重置”为 tail。</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> tail </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> queued.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span>
+<span class="line"><span style="color:#BD93F9;font-style:italic">this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">set</span><span style="color:#F8F8F2">(providerId, tail);</span></span></code></pre>
+<p>发生的是：</p>
+<ol>
+<li>从 <code>queued</code> 派生一个新 Promise <code>tail</code>；</li>
+<li>将 <code>tail</code> 保存为该 provider 当前最新的队尾；</li>
+<li>后续任务进入时会读取这个 <code>tail</code> 作为自己的 <code>previous</code>。</li>
+</ol>
+<h3 id="推荐表述-5">推荐表述</h3>
+<blockquote>
+<p>从真实任务 <code>queued</code> 派生一个不会失败的 <code>tail</code>，并将该 <code>tail</code> 登记为 provider 当前最新队尾，供后续任务等待。</p>
+</blockquote>
+<hr>
+<h2 id="纠错-8racewithabortsignal-不会主动-abort-接口">纠错 8：<code>raceWithAbortSignal()</code> 不会主动 abort 接口</h2>
+<h3 id="原观点-6">原观点</h3>
+<blockquote>
+<p>如果接口超时或用户主动取消，这个时候需要 abort 接口。</p>
+</blockquote>
+<h3 id="判断-7">判断</h3>
+<p><strong>容易误导。</strong></p>
+<h3 id="正确理解-7">正确理解</h3>
+<p><code>raceWithAbortSignal()</code> 自己只做：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>signal abort → 提前 reject 返回给调用方</span></span></code></pre>
+<p>它没有调用某个 API 去终止 operation。</p>
+<p>真正的鉴权解析函数确实接收了同一个 signal：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#50FA7B">resolveProviderAuthWithSignal</span><span style="color:#F8F8F2">(</span><span style="color:#FF79C6">...</span><span style="color:#F8F8F2">, signal)</span></span></code></pre>
+<p>其内部存储操作、OAuth 刷新或 API Key 解析如果继续把 signal 传给可取消的底层 IO，底层工作才可能真正终止。</p>
+<h3 id="推荐表述-6">推荐表述</h3>
+<blockquote>
+<p><code>raceWithAbortSignal()</code> 保证调用方可以及时结束等待；底层鉴权操作同时接收相同 signal，并应在网络或阻塞操作中主动响应它，从而尽可能真正停止工作。</p>
+</blockquote>
+<hr>
+<h2 id="纠错-9你的最终代码注释中哪些可保留">纠错 9：你的最终代码注释中哪些可保留</h2>
+<p>以下理解可以保留：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> previous </span><span style="color:#FF79C6">=</span><span style="color:#BD93F9;font-style:italic"> this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">get</span><span style="color:#F8F8F2">(providerId) </span><span style="color:#FF79C6">??</span><span style="color:#8BE9FD;font-style:italic"> Promise</span><span style="color:#F8F8F2">.</span><span style="color:#50FA7B">resolve</span><span style="color:#F8F8F2">();</span></span></code></pre>
+<blockquote>
+<p>取得该 provider 当前的队尾；没有任务时使用已完成 Promise。</p>
+</blockquote>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#BD93F9;font-style:italic">this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">set</span><span style="color:#F8F8F2">(providerId, tail);</span></span></code></pre>
+<blockquote>
+<p>将当前任务的安全完成 Promise 登记为最新队尾。</p>
+</blockquote>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">if</span><span style="color:#F8F8F2"> (</span><span style="color:#BD93F9;font-style:italic">this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">get</span><span style="color:#F8F8F2">(providerId) </span><span style="color:#FF79C6">===</span><span style="color:#F8F8F2"> tail) {</span></span>
+<span class="line"><span style="color:#BD93F9;font-style:italic">  this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">delete</span><span style="color:#F8F8F2">(providerId);</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<blockquote>
+<p>只有当前任务仍是最新队尾时才删除，避免旧任务误删后续任务。</p>
+</blockquote>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#FF79C6">return</span><span style="color:#50FA7B"> raceWithAbortSignal</span><span style="color:#F8F8F2">(queued, signal);</span></span></code></pre>
+<blockquote>
+<p>向调用方返回 queued 与 signal abort 的竞争结果。</p>
+</blockquote>
+<p>需要修正的注释是：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#6272A4">// tail 不是“正在执行 queued 的 Promise”</span></span>
+<span class="line"><span style="color:#6272A4">// 更准确：tail 是跟随 queued 完成、但不传播 queued 错误的内部队尾 Promise</span></span></code></pre>
+<hr>
+<h2 id="推荐的最终注释版">推荐的最终注释版</h2>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#6272A4">/**</span></span>
+<span class="line"><span style="color:#6272A4"> * Serialize credential mutations per provider.</span></span>
+<span class="line"><span style="color:#6272A4"> * Caller cancellation may stop waiting early, but the internal chain is held</span></span>
+<span class="line"><span style="color:#6272A4"> * until the active task actually settles.</span></span>
+<span class="line"><span style="color:#6272A4"> */</span></span>
+<span class="line"><span style="color:#F8F8F2">private </span><span style="color:#50FA7B">enqueue</span><span style="color:#F8F8F2">&#x3C;</span><span style="color:#FFB86C;font-style:italic">T</span><span style="color:#F8F8F2">>(</span></span>
+<span class="line"><span style="color:#F8F8F2">  providerId: string,</span></span>
+<span class="line"><span style="color:#F8F8F2">  task: () </span><span style="color:#FF79C6">=></span><span style="color:#8BE9FD;font-style:italic"> Promise</span><span style="color:#FF79C6">&#x3C;</span><span style="color:#F8F8F2">T</span><span style="color:#FF79C6">></span><span style="color:#F8F8F2">,</span></span>
+<span class="line"><span style="color:#F8F8F2">  options</span><span style="color:#FF79C6">?:</span><span style="color:#F8F8F2"> AuthOperationOptions,</span></span>
+<span class="line"><span style="color:#F8F8F2">): </span><span style="color:#8BE9FD;font-style:italic">Promise</span><span style="color:#FF79C6">&#x3C;</span><span style="color:#F8F8F2">T</span><span style="color:#FF79C6">></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">  const signal </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> operationSignal</span><span style="color:#F8F8F2">(options?.signal);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">  // The latest completion marker for this provider, or an already-completed</span></span>
+<span class="line"><span style="color:#6272A4">  // Promise when no task is currently queued.</span></span>
+<span class="line"><span style="color:#F8F8F2">  const previous </span><span style="color:#FF79C6">=</span><span style="color:#BD93F9;font-style:italic"> this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">get</span><span style="color:#F8F8F2">(providerId) </span><span style="color:#FF79C6">??</span><span style="color:#8BE9FD;font-style:italic"> Promise</span><span style="color:#F8F8F2">.</span><span style="color:#50FA7B">resolve</span><span style="color:#F8F8F2">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">  // Represent the real queued operation: wait for the previous operation to</span></span>
+<span class="line"><span style="color:#6272A4">  // settle, re-check cancellation, then execute task exactly once.</span></span>
+<span class="line"><span style="color:#F8F8F2">  const queued </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> (</span><span style="color:#FF79C6">async</span><span style="color:#F8F8F2"> () </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#FF79C6">    await</span><span style="color:#F8F8F2"> previous.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span>
+<span class="line"><span style="color:#F8F8F2">    signal.</span><span style="color:#50FA7B">throwIfAborted</span><span style="color:#F8F8F2">();</span></span>
+<span class="line"><span style="color:#FF79C6">    return</span><span style="color:#50FA7B"> task</span><span style="color:#F8F8F2">();</span></span>
+<span class="line"><span style="color:#F8F8F2">  })();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">  // Internal queue tail: follows queued to completion but never rejects, so a</span></span>
+<span class="line"><span style="color:#6272A4">  // failed task cannot break later tasks in the provider chain.</span></span>
+<span class="line"><span style="color:#F8F8F2">  const tail </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> queued.</span><span style="color:#50FA7B">catch</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {});</span></span>
+<span class="line"><span style="color:#F8F8F2">  this.chains.set(providerId, tail);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">  // Remove the map entry only if this task is still the newest queue tail.</span></span>
+<span class="line"><span style="color:#F8F8F2">  void tail.then(() => {</span></span>
+<span class="line"><span style="color:#FF79C6">    if</span><span style="color:#F8F8F2"> (</span><span style="color:#BD93F9;font-style:italic">this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">get</span><span style="color:#F8F8F2">(providerId) </span><span style="color:#FF79C6">===</span><span style="color:#F8F8F2"> tail) {</span></span>
+<span class="line"><span style="color:#BD93F9;font-style:italic">      this</span><span style="color:#F8F8F2">.chains.</span><span style="color:#50FA7B">delete</span><span style="color:#F8F8F2">(providerId);</span></span>
+<span class="line"><span style="color:#F8F8F2">    }</span></span>
+<span class="line"><span style="color:#F8F8F2">  });</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">  // Preserve the task's success/error for the caller while allowing the</span></span>
+<span class="line"><span style="color:#6272A4">  // caller to stop waiting immediately when its signal aborts.</span></span>
+<span class="line"><span style="color:#F8F8F2">  return </span><span style="color:#50FA7B">raceWithAbortSignal</span><span style="color:#F8F8F2">(</span><span style="color:#FFB86C;font-style:italic">queued</span><span style="color:#F8F8F2">, </span><span style="color:#FFB86C;font-style:italic">signal</span><span style="color:#F8F8F2">);</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<h2 id="最终准确表述">最终准确表述</h2>
+<p>可以把整段代码总结为：</p>
+<blockquote>
+<p><code>enqueue()</code> 为每个 provider 维护独立的 FIFO Promise 链。<code>queued</code> 表示等待前项并执行当前 task 的真实任务；<code>tail</code> 是不会传播错误的内部完成标记，保证失败不会破坏后续队列；<code>tail.then()</code> 只负责安全清理最新队尾；对外则返回 <code>raceWithAbortSignal(queued, signal)</code>，使调用方既能收到当前任务的真实成功或失败，也能在 signal abort 后立即停止等待。调用方取消等待并不必然终止已经开始的 task，内部 FIFO 仍会保持到真实任务完成。</p>
+</blockquote>  </article> <footer class="mt-5">  <div class="flex items-center gap-2"> <a title="上一篇: 【AI基建】pi-ai 之Provider鉴权解析--AI完整理解版" href="/posts/ai基建pi-ai-之provider鉴权解析--ai完整理解版"> <span class="inline-block vertical-mid i-mdi-chevron-double-left w-4 h-4"></span> 上一篇: 【AI基建】pi-ai 之Provider鉴权解析--AI完整理解版 </a> <a title="下一篇: 【性能优化】记录一次vite分包优化" href="/posts/性能优化记录一次vite分包优化"> 下一篇: 【性能优化】记录一次vite分包优化 <span class="inline-block vertical-mid i-mdi-chevron-double-right w-4 h-4"></span> </a> </div> </footer>    </main> <footer class="transition-swup-footer py-7.5" lg="row-2-3 col-2-3" data-astro-cid-e5lvscu2> <p data-astro-cid-gcn2mc3v>© 2026 <a target="_blank" href="https://cathlee.github.io/">Yuer</a></p><p data-astro-cid-gcn2mc3v>Theme <a target="_blank" href="https://github.com/Moeyua/astro-theme-typography">Typography</a> by <a target="_blank" href="https://moeyua.com">Moeyua</a></p><p data-astro-cid-gcn2mc3v>Proudly published with <a target="_blank" href="https://astro.build/">Astro</a></p> </footer> <script type="module">document.addEventListener("animationend",e,!1);function e(){document.documentElement.classList.remove("animation-prepared"),document.removeEventListener("animationend",e,!1)}</script>  </body> </html> <script type="module">function u(e){const t=document.createElement("pre");return t.style.width="1px",t.style.height="1px",t.style.position="fixed",t.style.top="5px",t.textContent=e,t}function a(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e.textContent||"");const t=getSelection();if(t==null)return Promise.reject(new Error);t.removeAllRanges();const n=document.createRange();return n.selectNodeContents(e),t.addRange(n),document.execCommand("copy"),t.removeAllRanges(),Promise.resolve()}function i(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e);const t=document.body;if(!t)return Promise.reject(new Error);const n=u(e);return t.appendChild(n),a(n),t.removeChild(n),Promise.resolve()}async function d(e){const t=e.getAttribute("for"),n=e.getAttribute("value");function o(){e.dispatchEvent(new CustomEvent("clipboard-copy",{bubbles:!0}))}if(e.getAttribute("aria-disabled")!=="true"){if(n)await i(n),o();else if(t){const r="getRootNode"in Element.prototype?e.getRootNode():e.ownerDocument;if(!(r instanceof Document||"ShadowRoot"in window&&r instanceof ShadowRoot))return;const c=r.getElementById(t);c&&(await p(c),o())}}}function p(e){return e instanceof HTMLInputElement||e instanceof HTMLTextAreaElement?i(e.value):e instanceof HTMLAnchorElement&&e.hasAttribute("href")?i(e.href):a(e)}function f(e){const t=e.currentTarget;t instanceof HTMLElement&&d(t)}function l(e){if(e.key===" "||e.key==="Enter"){const t=e.currentTarget;t instanceof HTMLElement&&(e.preventDefault(),d(t))}}function m(e){e.currentTarget.addEventListener("keydown",l)}function y(e){e.currentTarget.removeEventListener("keydown",l)}class h extends HTMLElement{static define(t="clipboard-copy",n=customElements){return n.define(t,this),this}constructor(){super(),this.addEventListener("click",f),this.addEventListener("focus",m),this.addEventListener("blur",y)}connectedCallback(){this.hasAttribute("tabindex")||this.setAttribute("tabindex","0"),this.hasAttribute("role")||this.setAttribute("role","button")}get value(){return this.getAttribute("value")||""}set value(t){this.setAttribute("value",t)}}const s=typeof globalThis<"u"?globalThis:window;try{s.ClipboardCopyElement=h.define()}catch(e){if(!(s.DOMException&&e instanceof DOMException&&e.name==="NotSupportedError")&&!(e instanceof ReferenceError))throw e}document.addEventListener("clipboard-copy",e=>{const n=e.target.querySelector(".icon");n.classList.replace("i-mdi-content-copy","i-mdi-check"),setTimeout(()=>{n.classList.replace("i-mdi-check","i-mdi-content-copy")},1500)});const b=Array.from(document.querySelectorAll("pre")),g="<div class='i-mdi-content-copy icon text-white'></div>";for(const e of b){const t=document.createElement("div");t.className="code-container";const n=document.createElement("clipboard-copy"),o=e.querySelector("code");n.value=o?.textContent??"",n.className="clipboard-copy",n.innerHTML=g,e.appendChild(n),e.parentNode?.insertBefore(t,e),t.appendChild(e)}</script> 

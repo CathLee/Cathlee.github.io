@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="zh-cn" class="animation-prepared" data-astro-cid-e5lvscu2> <head><title>我的观点们</title><meta charset="utf-8"><link rel="canonical" href="https://cathlee.github.io/2/"><meta name="description" content="在这里记录我的一些技术观点和生活点滴。"><meta name="robots" content="index, follow"><meta property="og:title" content="我的观点们"><meta property="og:type" content="article"><meta property="og:image" content="https://cathlee.github.io/placeholder.png"><meta property="og:url" content="https://cathlee.github.io/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="我的观点们" href="https://cathlee.github.io/atom.xml"><meta name="viewport" content="width=device-width"><meta name="generator" content="Astro v5.16.0"><meta name="twitter:image:src" content="https://cathlee.github.io/placeholder.png"><meta name="twitter:image:alt" content="在这里记录我的一些技术观点和生活点滴。"><meta name="twitter:creator" content="@moeyua13"><meta name="twitter:site" content="@moeyua13"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="我的观点们"><meta name="twitter:description" content="在这里记录我的一些技术观点和生活点滴。"><script>(function(){const theme = "system";
+
+  function updateTheme() {
+    // 优先使用 localStorage 中保存的主题
+    const stored = localStorage.getItem('theme')
+    let isDark = false
+
+    if (stored) {
+      // 如果用户手动设置了主题，使用保存的值
+      isDark = stored === 'dark'
+    } else if (theme === 'system' || !theme) {
+      // 否则根据系统偏好
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    } else {
+      // 使用配置的主题
+      isDark = theme === 'dark'
+    }
+
+    document.documentElement.classList.toggle('dark', isDark)
+  }
+
+  // 初始化主题
+  updateTheme()
+
+  // 监听系统主题变化（仅当用户未手动设置时）
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      document.documentElement.classList.toggle('dark', e.matches)
+    }
+  })
+})();</script><link rel="stylesheet" href="/_astro/_page_.BbSfUOGU.css"><script type="module" src="/_astro/page.D1hK2OoH.js"></script></head> <body class="h-100vh max-w-1200px min-w-390px mx-a" p="7.5 lg:y-0 lg:x-20" lg="grid gap-x-6 cols-[3fr_1fr] rows-[1fr_9rem]" data-astro-cid-e5lvscu2> <header class="transition-swup-header flex flex-col gap-2.5" m="7.5 lg:x-0 lg:t-20 lg:b-4" lg="row-1-2 col-2-3 justify-between items-start" data-astro-cid-e5lvscu2> <hgroup lg="write-vertical-right items-start b-l-2px b-l-primary text-left" flex="~ col gap-2.5" class="cursor-pointer text-center duration-800 ease-in-out"> <a class="not-underline-hover duration-800 ease-in-out" lg:p="x-2.5 b-12 hover:t-3.75 hover:b-8.75" hover:lg=" bg-primary color-background" href="/"> <h3 class="text-5 font-extrabold font-header">Some Tech&#39;s Blog</h3> <h1 class="text-8 font-extrabold font-header">我的观点们</h1> </a> </hgroup> <nav class="text-center font-bold" flex="~ col gap-4"> <ul lg="flex-col items-start text-4" class="text-3.5" flex="~ row gap-2 justify-center"> <li> <a class="" href="/"> 文章 </a> </li><li> <a class="" href="/archive"> 归档 </a> </li><li> <a class="" href="/categories"> 分类 </a> </li><li> <a class="" href="/about"> 关于 </a> </li><li> <a class="" href="/gallery"> 影集 </a> </li> </ul> <ul flex="~ row gap-1 justify-center"> <li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="github" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-github w-6 h-6">github</span> </a> </li><li> <a href="/atom.xml" target="_blank" title="rss" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-rss w-6 h-6">rss</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="twitter" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-twitter w-6 h-6">twitter</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="mastodon" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-mastodon w-6 h-6">mastodon</span> </a> </li> <li> <button id="theme-toggle" class="inline-flex items-center cursor-pointer border-none bg-transparent p-0 transition-transform duration-200 hover:scale-110 active:scale-95 not-underline-hover" aria-label="切换深色/浅色模式" title="切换主题"> <span class="sun-icon i-mdi-weather-sunny w-6 h-6"></span> <span class="moon-icon i-mdi-weather-night w-6 h-6 hidden"></span> </button> <script type="module">function a(e){document.addEventListener("swup:page:view",e)}function u(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):e(),a(e)}const i="theme",d="dark";function c(){if(typeof localStorage<"u"){const e=localStorage.getItem(i);if(e==="light"||e==="dark")return e}return typeof window<"u"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}function s(e){typeof localStorage<"u"&&localStorage.setItem(i,e),typeof document<"u"&&(e==="dark"?document.documentElement.classList.add(d):document.documentElement.classList.remove(d))}function m(){const t=c()==="dark"?"light":"dark";return s(t),t}function l(){const e=c();s(e)}function f(){const e=document.getElementById("theme-toggle"),t=e?.querySelector(".sun-icon"),n=e?.querySelector(".moon-icon");l();function o(){const r=document.documentElement.classList.contains("dark");t&&n&&(r?(t.classList.add("hidden"),n.classList.remove("hidden")):(t.classList.remove("hidden"),n.classList.add("hidden")))}o(),e?.addEventListener("click",()=>{m(),o()})}u(f);</script> </li> </ul> </nav> </header> <main class="transition-swup-main overflow-y-scroll scrollbar-hide outline-none" lg="row-1-3 col-1-2 py-20 " data-astro-cid-e5lvscu2>  <section contain-layout flex="~ col gap-7.5"> <article class="prose"> <header flex="~ col gap-2"> <h1 class="post-title"> <a class="not-prose" href="/posts/性能优化记录一次vite分包优化/">【性能优化】记录一次vite分包优化</a> </h1> <div class="text-3.5"> <span>发布于</span> <time>2025-08-22</time> <a href="/categories/性能优化">
+# 性能优化 </a> </div> </header>  <p class="line-clamp-4">使用 manualChunks、babel-plugin-lodash 等方式优化 Vite 项目的打包体积</p>  </article><article class="prose"> <header flex="~ col gap-2"> <h1 class="post-title"> <a class="not-prose" href="/posts/ai基建pi-agent里面的核心库的区别/">【AI基建】PI-Agent里面的核心库的区别</a> </h1> <div class="text-3.5"> <span>发布于</span> <time>2025-08-22</time> <a href="/categories/AI基建">
+# AI基建 </a> </div> </header>  <p class="line-clamp-4">解析 pi-agent-core、pi-coding-agent、pi-ai 三个核心库的职责区别</p>  </article><article class="prose"> <header flex="~ col gap-2"> <h1 class="post-title"> <a class="not-prose" href="/posts/react/">初探React</a> </h1> <div class="text-3.5"> <span>发布于</span> <time>2025-05-04</time> <a href="/categories/React">
+# React </a> </div> </header>  <p class="line-clamp-4">什么是render
+
+
+rendering的定义：react是如何基于当前的props和state进行ui渲染的
+
+
+render过程一览：
+
+
+从fiber树的节点root，到子节点child，进行遍历，寻找被标记上需要更新的节点
+
+
+对于每一个被打上标记待更新的节点，会通过如下的过程去执行更新节点的所需要的前置信息计算
+
+For each flagged component, React will call either FunctionComponent(props) (for function components), or classComponentInstance.render() (for class components) , and save the render output for the next steps of the render pass。
+
+在这里，我们</p>  </article><article class="prose"> <header flex="~ col gap-2"> <h1 class="post-title"> <a class="not-prose" href="/posts/vue vapor/">关于Vapor Mode现阶段进度的理解总结</a> </h1> <div class="text-3.5"> <span>发布于</span> <time>2025-05-04</time> <a href="/categories/Vue">
+# Vue </a> </div> </header>  <p class="line-clamp-4">关于Vapor Mode现阶段进度的理解总结--第一章
+前言：本文在介绍vapor mode之前，第一章会先介绍明确最基本的三元论，是什么？为什么？怎么做？
+未来几章会逐步介绍“怎么做”阶段，以及各个大佬的进度，待解决的问题，同时最后思考，我们能做些什么参与到相关开源项目中。
+Vapor Mode是什么
+熟悉vue的都知道，vue的渲染原理借助了一个核心概念--虚拟dom，有了虚拟dom我们在更新节点时能够实现对diff节点的收集和相关依赖的收集，以便于下一次的渲染速度能够得到提升。
+于此同时虚拟dom本身并不是dom，我们在做节点渲染时往往需要去生成对应的虚拟节点，通过比对新旧dom树去替换待更新的dom，这种过程从原理上来说是存在性能消耗的。
+于是vue推出的vapor mode的想法，就是直接对dom进行操作，直接修改对应的节点，而不是生成虚拟dom去操作。
+为什么推出Vapor
+我</p>  </article> </section> <footer class="mt-5"> <div class="mb-2.5"> 第 2 页 / 共 2 页 </div> <div class="flex items-center gap-2"> <a title="上一页" href="/"> <span class="inline-block vertical-mid i-mdi-chevron-double-left w-4 h-4"></span> 上一页 </a>  </div> </footer>  </main> <footer class="transition-swup-footer py-7.5" lg="row-2-3 col-2-3" data-astro-cid-e5lvscu2> <p data-astro-cid-gcn2mc3v>© 2026 <a target="_blank" href="https://cathlee.github.io/">Yuer</a></p><p data-astro-cid-gcn2mc3v>Theme <a target="_blank" href="https://github.com/Moeyua/astro-theme-typography">Typography</a> by <a target="_blank" href="https://moeyua.com">Moeyua</a></p><p data-astro-cid-gcn2mc3v>Proudly published with <a target="_blank" href="https://astro.build/">Astro</a></p> </footer> <script type="module">document.addEventListener("animationend",e,!1);function e(){document.documentElement.classList.remove("animation-prepared"),document.removeEventListener("animationend",e,!1)}</script>  </body> </html>

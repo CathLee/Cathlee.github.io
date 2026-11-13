@@ -1,0 +1,274 @@
+<!DOCTYPE html><html lang="zh-cn" class="animation-prepared" data-astro-cid-e5lvscu2> <head><title>初探React</title><meta charset="utf-8"><link rel="canonical" href="https://cathlee.github.io/posts/react/"><meta name="robots" content="index, follow"><meta property="og:title" content="初探React"><meta property="og:type" content="article"><meta property="og:image" content="https://cathlee.github.io/placeholder.png"><meta property="og:url" content="https://cathlee.github.io/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="我的观点们" href="https://cathlee.github.io/atom.xml"><meta name="viewport" content="width=device-width"><meta name="generator" content="Astro v5.16.0"><meta name="twitter:image:src" content="https://cathlee.github.io/placeholder.png"><meta name="twitter:image:alt" content><meta name="twitter:creator" content="@moeyua13"><meta name="twitter:site" content="@moeyua13"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="初探React"><meta name="twitter:description" content><script>(function(){const theme = "system";
+
+  function updateTheme() {
+    // 优先使用 localStorage 中保存的主题
+    const stored = localStorage.getItem('theme')
+    let isDark = false
+
+    if (stored) {
+      // 如果用户手动设置了主题，使用保存的值
+      isDark = stored === 'dark'
+    } else if (theme === 'system' || !theme) {
+      // 否则根据系统偏好
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    } else {
+      // 使用配置的主题
+      isDark = theme === 'dark'
+    }
+
+    document.documentElement.classList.toggle('dark', isDark)
+  }
+
+  // 初始化主题
+  updateTheme()
+
+  // 监听系统主题变化（仅当用户未手动设置时）
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      document.documentElement.classList.toggle('dark', e.matches)
+    }
+  })
+})();</script><link rel="stylesheet" href="/_astro/_page_.BbSfUOGU.css">
+<style>.tk-meta-input{background-color:#fff}.code-container{position:relative}.clipboard-copy{position:absolute;top:.5rem;right:.5rem;width:1.75rem;height:1.75rem;display:flex;justify-content:center;align-items:center;border-radius:.25rem}.clipboard-copy:hover{background-color:#30363d}
+</style><script type="module" src="/_astro/page.D1hK2OoH.js"></script></head> <body class="h-100vh max-w-1200px min-w-390px mx-a" p="7.5 lg:y-0 lg:x-20" lg="grid gap-x-6 cols-[3fr_1fr] rows-[1fr_9rem]" data-astro-cid-e5lvscu2> <header class="transition-swup-header flex flex-col gap-2.5" m="7.5 lg:x-0 lg:t-20 lg:b-4" lg="row-1-2 col-2-3 justify-between items-start" data-astro-cid-e5lvscu2> <hgroup lg="write-vertical-right items-start b-l-2px b-l-primary text-left" flex="~ col gap-2.5" class="cursor-pointer text-center duration-800 ease-in-out"> <a class="not-underline-hover duration-800 ease-in-out" lg:p="x-2.5 b-12 hover:t-3.75 hover:b-8.75" hover:lg=" bg-primary color-background" href="/"> <h3 class="text-5 font-extrabold font-header">Some Tech&#39;s Blog</h3> <h1 class="text-8 font-extrabold font-header">我的观点们</h1> </a> </hgroup> <nav class="text-center font-bold" flex="~ col gap-4"> <ul lg="flex-col items-start text-4" class="text-3.5" flex="~ row gap-2 justify-center"> <li> <a class="" href="/"> 文章 </a> </li><li> <a class="" href="/archive"> 归档 </a> </li><li> <a class="" href="/categories"> 分类 </a> </li><li> <a class="" href="/about"> 关于 </a> </li><li> <a class="" href="/gallery"> 影集 </a> </li> </ul> <ul flex="~ row gap-1 justify-center"> <li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="github" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-github w-6 h-6">github</span> </a> </li><li> <a href="/atom.xml" target="_blank" title="rss" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-rss w-6 h-6">rss</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="twitter" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-twitter w-6 h-6">twitter</span> </a> </li><li> <a href="https://github.com/moeyua/astro-theme-typography" target="_blank" title="mastodon" class="not-underline-hover inline-flex items-center"> <span class="i-mdi-mastodon w-6 h-6">mastodon</span> </a> </li> <li> <button id="theme-toggle" class="inline-flex items-center cursor-pointer border-none bg-transparent p-0 transition-transform duration-200 hover:scale-110 active:scale-95 not-underline-hover" aria-label="切换深色/浅色模式" title="切换主题"> <span class="sun-icon i-mdi-weather-sunny w-6 h-6"></span> <span class="moon-icon i-mdi-weather-night w-6 h-6 hidden"></span> </button> <script type="module">function a(e){document.addEventListener("swup:page:view",e)}function u(e){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",e):e(),a(e)}const i="theme",d="dark";function c(){if(typeof localStorage<"u"){const e=localStorage.getItem(i);if(e==="light"||e==="dark")return e}return typeof window<"u"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}function s(e){typeof localStorage<"u"&&localStorage.setItem(i,e),typeof document<"u"&&(e==="dark"?document.documentElement.classList.add(d):document.documentElement.classList.remove(d))}function m(){const t=c()==="dark"?"light":"dark";return s(t),t}function l(){const e=c();s(e)}function f(){const e=document.getElementById("theme-toggle"),t=e?.querySelector(".sun-icon"),n=e?.querySelector(".moon-icon");l();function o(){const r=document.documentElement.classList.contains("dark");t&&n&&(r?(t.classList.add("hidden"),n.classList.remove("hidden")):(t.classList.remove("hidden"),n.classList.add("hidden")))}o(),e?.addEventListener("click",()=>{m(),o()})}u(f);</script> </li> </ul> </nav> </header> <main class="transition-swup-main overflow-y-scroll scrollbar-hide outline-none" lg="row-1-3 col-1-2 py-20 " data-astro-cid-e5lvscu2>   <article class="prose"> <header flex="~ col gap-2"> <h1 class="post-title"> <a class="not-prose" href="/posts/react/">初探React</a> </h1> <div class="text-3.5"> <span>发布于</span> <time>2025-05-04</time> <a href="/categories/React">
+# React </a> </div> </header>  <h3 id="什么是render">什么是render</h3>
+<ol>
+<li>
+<p>rendering的定义：react是如何基于当前的props和state进行ui渲染的</p>
+</li>
+<li>
+<p>render过程一览：</p>
+<ul>
+<li>
+<p>从fiber树的节点root，到子节点child，进行遍历，寻找被标记上需要更新的节点</p>
+</li>
+<li>
+<p>对于每一个被打上标记待更新的节点，会通过如下的过程去执行更新节点的所需要的前置信息计算</p>
+<blockquote>
+<p>For each flagged component, React will call either <code>FunctionComponent(props)</code> (for function components), or <code>classComponentInstance.render()</code> (for class components) , and save the render output for the next steps of the render pass。</p>
+</blockquote>
+<p>在这里，我们得知，react的render阶段，主要是在收集flagged被打上标签的节点，然后对他们执行render()操作（ps：函数式组件使用 <code>FunctionComponent(props)</code>，类组件使用<code>classComponentInstance.render()</code>），收集render()操作的产物，以便于后续更新执行diff计算</p>
+<p>如下，便是这一过程的代码示例：</p>
+</li>
+</ul>
+</li>
+</ol>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#6272A4">// This JSX syntax:</span></span>
+<span class="line"><span style="color:#6272A4">// 当我们使用函数式创建组件时</span></span>
+<span class="line"><span style="color:#FF79C6">return</span><span style="color:#F8F8F2"> &#x3C;</span><span style="color:#8BE9FD;font-style:italic">MyComponent</span><span style="color:#50FA7B;font-style:italic"> a</span><span style="color:#FF79C6">={</span><span style="color:#BD93F9">42</span><span style="color:#FF79C6">}</span><span style="color:#50FA7B;font-style:italic"> b</span><span style="color:#FF79C6">=</span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">testing</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">>Text here&#x3C;/</span><span style="color:#8BE9FD;font-style:italic">MyComponent</span><span style="color:#F8F8F2">></span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// is converted to this call:</span></span>
+<span class="line"><span style="color:#6272A4">// 组件会通过createElement()生成描述组件的UI-value形式的react节点,即如下行代码所示</span></span>
+<span class="line"><span style="color:#FF79C6">return</span><span style="color:#F8F8F2"> React.</span><span style="color:#50FA7B">createElement</span><span style="color:#F8F8F2">(MyComponent, {a</span><span style="color:#FF79C6">:</span><span style="color:#BD93F9"> 42</span><span style="color:#F8F8F2">, b</span><span style="color:#FF79C6">:</span><span style="color:#E9F284"> "</span><span style="color:#F1FA8C">testing</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">}, </span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">Text Here</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// and that becomes this element object:</span></span>
+<span class="line"><span style="color:#F8F8F2">{type: MyComponent, props: {a: </span><span style="color:#BD93F9">42</span><span style="color:#F8F8F2">, b: </span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">testing</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">}, children: [</span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">Text Here</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">]}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// And internally, React calls the actual function to render it:</span></span>
+<span class="line"><span style="color:#6272A4">// 使用`FunctionComponent(props)`</span></span>
+<span class="line"><span style="color:#6272A4">// 在render phase的最后阶段，会调用render()，生成render phase操作的产物以便于后续commit phase进行diff更新</span></span>
+<span class="line"><span style="color:#6272A4">// 这一产物也是一种UI-value的对象，并不是一种的dom节点</span></span>
+<span class="line"><span style="color:#FF79C6">let</span><span style="color:#F8F8F2"> elements </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> MyComponent</span><span style="color:#F8F8F2">({</span><span style="color:#FF79C6">...</span><span style="color:#F8F8F2">props, children})</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// For "host components" like HTML:</span></span>
+<span class="line"><span style="color:#6272A4">// 对于内置的html标签来说就是也是类似的过程</span></span>
+<span class="line"><span style="color:#FF79C6">return</span><span style="color:#F8F8F2"> &#x3C;</span><span style="color:#FF79C6">button</span><span style="color:#50FA7B;font-style:italic"> onClick</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {}</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">>Click Me&#x3C;/</span><span style="color:#FF79C6">button</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#6272A4">// becomes</span></span>
+<span class="line"><span style="color:#F8F8F2">React.</span><span style="color:#50FA7B">createElement</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">button</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">, {onClick}, </span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">Click Me</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"><span style="color:#6272A4">// and finally:</span></span>
+<span class="line"><span style="color:#F8F8F2">{type: </span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">button</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">, props: {onClick}, children: [</span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">Click me</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">]}</span></span></code></pre>
+<p>等到react收集完当前组件树所有待更新节点的render()产物后（这一产物也被叫做visual dom），会执行水合操作<a href="https://legacy.reactjs.org/docs/reconciliation.html">reconciliation</a>.去进行新旧组件树节点的差异比对，等到收集完所有差异后，进行一次性同步更新真实dom的操作。</p>
+<h4 id="render的产物不是dom">render的产物不是dom</h4>
+<blockquote>
+<p><strong>Note:</strong> The React team has downplayed the term “virtual DOM” in recent years. <a href="https://twitter.com/dan_abramov/status/1066328666341294080?lang=en">Dan Abramov said</a>:</p>
+<p>I wish we could retire the term “virtual DOM”. It made sense in 2013 because otherwise people assumed React creates DOM nodes on every render. But people rarely assume this today. “Virtual DOM” sounds like a workaround for some DOM issue. But that’s not what React is.
+React is “value UI”. Its core principle is that UI is a value, just like a string or an array. You can keep it in a variable, pass it around, use JavaScript control flow with it, and so on. That expressiveness is the point — not some diffing to avoid applying changes to the DOM.
+It doesn’t even always represent the DOM, for example <code>&#x3C;Message recipientId={10} /></code> is not DOM. Conceptually it represents lazy function calls: <code>Message.bind(null, { recipientId: 10 })</code>.</p>
+</blockquote>
+<p>这里主要是想说，diff的水合过程并不真的完完全全就是新建虚拟dom与旧的真实的dom进行比对的过程，react是一个值驱动ui变化的框架，本质上所有diff过程中用到的产物都是一种<code>UI-value</code>形式的对象，可以是string或者是array等等js的基本类型对象，而不仅仅只是dom而已。本质上react只是为了更好的进行值比对，驱动视图变化，而不是为了创建新dom，替换旧dom。就像上述代码这样：</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#F8F8F2">{type: MyComponent, props: {a: </span><span style="color:#BD93F9">42</span><span style="color:#F8F8F2">, b: </span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">testing</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">}, children: [</span><span style="color:#E9F284">"</span><span style="color:#F1FA8C">Text Here</span><span style="color:#E9F284">"</span><span style="color:#F8F8F2">]}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6272A4">// And internally, React calls the actual function to render it:</span></span>
+<span class="line"><span style="color:#6272A4">// 使用`FunctionComponent(props)`</span></span>
+<span class="line"><span style="color:#6272A4">// 在render phase的最后阶段，会调用render()，生成render phase操作的产物以便于后续commit phase进行diff更新</span></span>
+<span class="line"><span style="color:#6272A4">// 这一产物也是一种UI-value的对象，并不是一种的dom节点</span></span>
+<span class="line"><span style="color:#FF79C6">let</span><span style="color:#F8F8F2"> elements </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> MyComponent</span><span style="color:#F8F8F2">({</span><span style="color:#FF79C6">...</span><span style="color:#F8F8F2">props, children})</span></span></code></pre>
+<blockquote>
+<p><em>It doesn’t even always represent the DOM, for example</em> <code>&#x3C;Message recipientId={10} /></code> <em>is not DOM. Conceptually it represents lazy function calls:</em> <code>Message.bind(null, { recipientId: 10 })</code><em>.</em></p>
+</blockquote>
+<p>这里也是一样的意思<code>&#x3C;Message recipientId={10} /></code>并不是一个真实dom，而只是一个bind函数回调<code>Message.bind(null, { recipientId: 10 })</code><em>.</em></p>
+<h3 id="render和commit阶段">render和commit阶段</h3>
+<p>整个react作业的过程分为两个阶段</p>
+<ul>
+<li>
+<p>render：渲染组件，收集待更新节点的相关信息，形成渲染产物</p>
+</li>
+<li>
+<p>commit：将render阶段收集到的信息执行到真实dom上</p>
+<blockquote>
+<p>After React has updated the DOM in the commit phase, it updates all refs accordingly to point to the requested DOM nodes and component instances. It then synchronously runs the <code>componentDidMount</code> and <code>componentDidUpdate</code> class lifecycle methods, and the <code>useLayoutEffect</code> hooks.</p>
+</blockquote>
+<p>执行完dom更新后，所有的component实例和refs绑定的对象都会被更新，之后便会开始执行<code>componentDidMount</code> 、和<code>componentDidUpdate</code>生命周期函数，以及<code>useLayoutEffect</code>钩子函数</p>
+<blockquote>
+<p>React then sets a short timeout, and when it expires, runs all the <code>useEffect</code> hooks. This step is also known as the “Passive Effects” phase.</p>
+</blockquote>
+<p>之后才会进行短暂的延迟更新，叫做<code>Passive Effects</code>阶段，去执行所有的useEffect钩子函数。值得一提的是，在react18，引入了useTransition，能够在render phase 阶段去暂停render，去获取浏览器相关数据，然后再执行render。所有这里引入的概念就是“react中的rendering 概念并不是只是用于渲染虚拟dom的阶段，来更新dom而已，一些未存在显性页面变化的操作背后，也可能在执行rendering”</p>
+</li>
+</ul>
+<h3 id="react是如何处理render的">React是如何处理Render的</h3>
+<p>执行re-render的方法如下：</p>
+<p>After the initial render has completed, there are a few different ways to tell React to queue a re-render:</p>
+<ul>
+<li>Function components:
+<ul>
+<li><code>useState</code> setters</li>
+<li><code>useReducer</code> dispatches</li>
+</ul>
+</li>
+<li>Class components:
+<ul>
+<li><code>this.setState()</code></li>
+<li><code>this.forceUpdate()</code></li>
+</ul>
+</li>
+<li>Other:
+<ul>
+<li>Calling the ReactDOM top-level <code>render(&#x3C;App>)</code> method again (which is equivalent to calling <code>forceUpdate()</code> on the root component)</li>
+<li>Updates triggered from the new <code>useSyncExternalStore</code> hook</li>
+</ul>
+</li>
+</ul>
+<p>Note that function components don’t have a <code>forceUpdate</code> method, but you can get the same behavior by using a <code>useReducer</code> hook that always increments a counter:</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> [, forceRender] </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> useReducer</span><span style="color:#F8F8F2">(</span><span style="color:#FFB86C;font-style:italic">c</span><span style="color:#FF79C6"> =></span><span style="color:#F8F8F2"> c </span><span style="color:#FF79C6">+</span><span style="color:#BD93F9"> 1</span><span style="color:#F8F8F2">, </span><span style="color:#BD93F9">0</span><span style="color:#F8F8F2">)</span></span></code></pre>
+<blockquote>
+<p><strong>Rendering a component will, by default, cause *all* components inside of it to be rendered too!</strong></p>
+<p>Also, another key point:</p>
+<p><strong>In normal rendering, React does *not* care whether “props changed” - it will render child components unconditionally just because the parent rendered!</strong></p>
+<p>This means that calling <code>setState()</code> in your root <code>&#x3C;App></code> component, with no other changes altering the behavior, <em>will</em> cause React to re-render every single component in the component tree. After all, one of the original sales pitches for React was <a href="https://www.slideshare.net/floydophone/react-preso-v2">“act like we’re redrawing the entire app on every update”</a>.</p>
+</blockquote>
+<p>react组件渲染的逻辑就是父组件发生改变，所有子组件跟着一起re-render</p>
+<blockquote>
+<p>Now, it’s very likely that most of the components in the tree will return the exact same render output as last time, and therefore React won’t need to make any changes to the DOM. <em>But</em>, React will still have to do the work of asking components to render themselves and diffing the render output. Both of those take time and effort.</p>
+</blockquote>
+<p>哪怕是没变更的节点，也会对props的变量进行引用值地址的更新，执行render，同时也会也要进行diff比对询问是否需要被打上标签，如</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#FF79C6">const</span><span style="color:#F8F8F2"> MemoizedChildComponent </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> React.</span><span style="color:#50FA7B">memo</span><span style="color:#F8F8F2">(ChildComponent)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">function</span><span style="color:#50FA7B"> ParentComponent</span><span style="color:#F8F8F2">() {</span></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#50FA7B"> onClick</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> () </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#F8F8F2">    console.</span><span style="color:#50FA7B">log</span><span style="color:#F8F8F2">(</span><span style="color:#E9F284">'</span><span style="color:#F1FA8C">Button clicked</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"><span style="color:#F8F8F2">  }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#F8F8F2"> data </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> { a</span><span style="color:#FF79C6">:</span><span style="color:#BD93F9"> 1</span><span style="color:#F8F8F2">, b</span><span style="color:#FF79C6">:</span><span style="color:#BD93F9"> 2</span><span style="color:#F8F8F2"> }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">  return</span><span style="color:#F8F8F2"> &#x3C;</span><span style="color:#8BE9FD;font-style:italic">MemoizedChildComponent</span><span style="color:#50FA7B;font-style:italic"> onClick</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">onClick</span><span style="color:#FF79C6">}</span><span style="color:#50FA7B;font-style:italic"> data</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">data</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2"> /></span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<p>即使childcomponent已经被memo，但是每次parentComponent变更时，仍然会重新渲染MemoizedChildComponent，因为即使函数内容相同,它在每次渲染时都是一个新的函数引用。</p>
+<blockquote>
+<p>Similarly, note that rendering <code>&#x3C;MemoizedChild>&#x3C;OtherComponent />&#x3C;/MemoizedChild></code> will <em>also</em> force the child to always render, because <code>props.children</code> is always a new reference.</p>
+</blockquote>
+<h3 id="fiber架构">Fiber架构</h3>
+<h4 id="hooks-must-be-called-on-the-top-level">Hooks must be called on the top level</h4>
+<p>hook本质上只是一个array，这里介绍了原理，<a href="https://www.swyx.io/hooks#getting-closure-on-react-hooks%EF%BC%8CuseState%E6%9C%AC%E8%B4%A8%E4%B8%8A%E5%B0%B1%E6%98%AF%E4%B8%80%E4%B8%AA%E9%97%AD%E5%8C%85%EF%BC%88closures%EF%BC%89%EF%BC%8C%E7%84%B6%E5%90%8Ehooks%E8%AE%BE%E8%AE%A1%E6%88%90%E6%95%B0%E7%BB%84%E5%BD%A2%E5%BC%8F%EF%BC%8C%E4%BE%BF%E4%BA%8E%E7%BB%84%E4%BB%B6%E9%80%90%E6%AD%A5%E6%89%A7%E8%A1%8Chook%E3%80%82%E6%AF%8F%E4%B8%AAhook%E9%83%BD%E6%9C%89%E8%87%AA%E5%B7%B1%E7%89%B9%E5%AE%9A%E7%9A%84index%E5%92%8C%E5%AF%B9%E5%BA%94%E7%9A%84%E5%80%BC%E3%80%82%E5%90%8C%E6%97%B6%E8%BF%99%E4%B9%9F%E6%98%AF%E4%B8%BA%E4%BB%80%E4%B9%88">https://www.swyx.io/hooks#getting-closure-on-react-hooks，useState本质上就是一个闭包（closures），然后hooks设计成数组形式，便于组件逐步执行hook。每个hook都有自己特定的index和对应的值。同时这也是为什么</a></p>
+<blockquote>
+<p><strong>This is why Hooks must be called on the top level of our components.</strong> If we want to run an effect conditionally, we can put that condition <em>inside</em> our Hook:</p>
+</blockquote>
+<p><a href="https://legacy.reactjs.org/docs/hooks-rules.html#explanation">https://legacy.reactjs.org/docs/hooks-rules.html#explanation</a></p>
+<p>比如说if条件内的useEffect被skipped掉了话，但是原本componetInstance组件实例作用域内的hookArray的hookIndex还是保持原来的样子，这样就会导致后续hook的index找不到对应的数据，进一步报错，不执行后续的hook了</p>
+<h3 id="优化render的方式">优化Render的方式</h3>
+<ul>
+<li>React.memo()</li>
+<li><a href="https://react.dev/reference/react/Component#shouldcomponentupdate"><code>React.Component.shouldComponentUpdate</code></a></li>
+<li><a href="https://react.dev/reference/react/PureComponent"><code>React.PureComponent</code></a></li>
+</ul>
+<blockquote>
+<p>All of these approaches use a comparison technique called <strong>“shallow equality”</strong>. This means checking every individual field in two different objects, and seeing if any of the <em>contents</em> of the objects are a different value. In other words, <code>obj1.a === obj2.a &#x26;&#x26; obj1.b === obj2.b &#x26;&#x26; ........</code>. This is typically a fast process, because <code>===</code> comparisons are very simple for the JS engine to do. So, these three approaches do the equivalent of <code>const shouldRender = !shallowEqual(newProps, prevProps)</code>.</p>
+</blockquote>
+<p>上述几种优化方式都是浅比较。</p>
+<ul>
+<li>If you include <code>props.children</code> in your output, that element is the same if this component does a state update</li>
+</ul>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#6272A4">// The `props.children` content won't re-render if we update state</span></span>
+<span class="line"><span style="color:#FF79C6">function</span><span style="color:#50FA7B"> SomeProvider</span><span style="color:#F8F8F2">({ </span><span style="color:#FFB86C;font-style:italic">children</span><span style="color:#F8F8F2"> }) {</span></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#F8F8F2"> [counter, setCounter] </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> useState</span><span style="color:#F8F8F2">(</span><span style="color:#BD93F9">0</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">  return</span><span style="color:#F8F8F2"> (</span></span>
+<span class="line"><span style="color:#F8F8F2">    &#x3C;</span><span style="color:#FF79C6">div</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">      &#x3C;</span><span style="color:#FF79C6">button</span><span style="color:#50FA7B;font-style:italic"> onClick</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">() </span><span style="color:#FF79C6">=></span><span style="color:#50FA7B"> setCounter</span><span style="color:#F8F8F2">(counter </span><span style="color:#FF79C6">+</span><span style="color:#BD93F9"> 1</span><span style="color:#F8F8F2">)</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">        Count:</span></span>
+<span class="line"><span style="color:#FF79C6">        {</span><span style="color:#F8F8F2">counter</span><span style="color:#FF79C6">}</span></span>
+<span class="line"><span style="color:#F8F8F2">      &#x3C;/</span><span style="color:#FF79C6">button</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">      &#x3C;</span><span style="color:#8BE9FD;font-style:italic">OtherChildComponent</span><span style="color:#F8F8F2"> /></span></span>
+<span class="line"><span style="color:#FF79C6">      {</span><span style="color:#F8F8F2">children</span><span style="color:#FF79C6">}</span></span>
+<span class="line"><span style="color:#F8F8F2">    &#x3C;/</span><span style="color:#FF79C6">div</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">  )</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<ul>
+<li>If you wrap some elements with <code>useMemo()</code>, those will stay the same until the dependencies change</li>
+</ul>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#FF79C6">function</span><span style="color:#50FA7B"> OptimizedParent</span><span style="color:#F8F8F2">() {</span></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#F8F8F2"> [counter1, setCounter1] </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> useState</span><span style="color:#F8F8F2">(</span><span style="color:#BD93F9">0</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#F8F8F2"> [counter2, setCounter2] </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> useState</span><span style="color:#F8F8F2">(</span><span style="color:#BD93F9">0</span><span style="color:#F8F8F2">)</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#F8F8F2"> memoizedElement </span><span style="color:#FF79C6">=</span><span style="color:#50FA7B"> useMemo</span><span style="color:#F8F8F2">(() </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#6272A4">    // This element stays the same reference if counter 2 is updated,</span></span>
+<span class="line"><span style="color:#6272A4">    // so it won't re-render unless counter 1 changes</span></span>
+<span class="line"><span style="color:#FF79C6">    return</span><span style="color:#F8F8F2"> &#x3C;</span><span style="color:#8BE9FD;font-style:italic">ExpensiveChildComponent</span><span style="color:#F8F8F2"> /></span></span>
+<span class="line"><span style="color:#F8F8F2">  }, [counter1])</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">  return</span><span style="color:#F8F8F2"> (</span></span>
+<span class="line"><span style="color:#F8F8F2">    &#x3C;</span><span style="color:#FF79C6">div</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">      &#x3C;</span><span style="color:#FF79C6">button</span><span style="color:#50FA7B;font-style:italic"> onClick</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">() </span><span style="color:#FF79C6">=></span><span style="color:#50FA7B"> setCounter1</span><span style="color:#F8F8F2">(counter1 </span><span style="color:#FF79C6">+</span><span style="color:#BD93F9"> 1</span><span style="color:#F8F8F2">)</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">        Counter 1:</span></span>
+<span class="line"><span style="color:#FF79C6">        {</span><span style="color:#E9F284">'</span><span style="color:#E9F284"> '</span><span style="color:#FF79C6">}</span></span>
+<span class="line"><span style="color:#FF79C6">        {</span><span style="color:#F8F8F2">counter1</span><span style="color:#FF79C6">}</span></span>
+<span class="line"><span style="color:#F8F8F2">      &#x3C;/</span><span style="color:#FF79C6">button</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">      &#x3C;</span><span style="color:#FF79C6">button</span><span style="color:#50FA7B;font-style:italic"> onClick</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">() </span><span style="color:#FF79C6">=></span><span style="color:#50FA7B"> setCounter1</span><span style="color:#F8F8F2">(counter2 </span><span style="color:#FF79C6">+</span><span style="color:#BD93F9"> 1</span><span style="color:#F8F8F2">)</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">        Counter 2:</span></span>
+<span class="line"><span style="color:#FF79C6">        {</span><span style="color:#E9F284">'</span><span style="color:#E9F284"> '</span><span style="color:#FF79C6">}</span></span>
+<span class="line"><span style="color:#FF79C6">        {</span><span style="color:#F8F8F2">counter2</span><span style="color:#FF79C6">}</span></span>
+<span class="line"><span style="color:#F8F8F2">      &#x3C;/</span><span style="color:#FF79C6">button</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#FF79C6">      {</span><span style="color:#F8F8F2">memoizedElement</span><span style="color:#FF79C6">}</span></span>
+<span class="line"><span style="color:#F8F8F2">    &#x3C;/</span><span style="color:#FF79C6">div</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">  )</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<blockquote>
+<p>For all of these techniques, <strong>skipping rendering a component means React will also skip rendering that entire subtree</strong>, because it’s effectively putting a stop sign up to halt the default “render children recursively” behavior.</p>
+</blockquote>
+<p>当前组件的render被skipped之后，所有的子节点的render也会被skipped。</p>
+<h3 id="是否有必要memoize-everything">是否有必要Memoize Everything</h3>
+<h4 id="为什么不使用reactmemo去包裹所有组件">为什么不使用react.memo去包裹所有组件</h4>
+<p>根据博客中的这句话</p>
+<blockquote>
+<p>Also, while I don’t have a specific link on it, it’s possible that trying to apply this to all components by default might result in bugs due to cases where people are mutating data rather than updating it immutably.</p>
+</blockquote>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#FF79C6">function</span><span style="color:#50FA7B"> Parent</span><span style="color:#F8F8F2">() {</span></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#F8F8F2"> [user, setUser] </span><span style="color:#FF79C6">=</span><span style="color:#F8F8F2"> React.</span><span style="color:#50FA7B">useState</span><span style="color:#F8F8F2">({ name</span><span style="color:#FF79C6">:</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">Alice</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2"> })</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">  const</span><span style="color:#50FA7B"> updateUser</span><span style="color:#FF79C6"> =</span><span style="color:#F8F8F2"> () </span><span style="color:#FF79C6">=></span><span style="color:#F8F8F2"> {</span></span>
+<span class="line"><span style="color:#6272A4">    // 直接修改 user 对象</span></span>
+<span class="line"><span style="color:#F8F8F2">    user.name </span><span style="color:#FF79C6">=</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">Bob</span><span style="color:#E9F284">'</span><span style="color:#6272A4"> // 这是可变更新</span></span>
+<span class="line"><span style="color:#50FA7B">    setUser</span><span style="color:#F8F8F2">(user) </span><span style="color:#6272A4">// 这不会触发重新渲染</span></span>
+<span class="line"><span style="color:#F8F8F2">  }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FF79C6">  return</span><span style="color:#F8F8F2"> (</span></span>
+<span class="line"><span style="color:#F8F8F2">    &#x3C;</span><span style="color:#FF79C6">div</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">      &#x3C;</span><span style="color:#8BE9FD;font-style:italic">MyComponent</span><span style="color:#50FA7B;font-style:italic"> user</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">user</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2"> /></span></span>
+<span class="line"><span style="color:#F8F8F2">      &#x3C;</span><span style="color:#FF79C6">button</span><span style="color:#50FA7B;font-style:italic"> onClick</span><span style="color:#FF79C6">={</span><span style="color:#F8F8F2">updateUser</span><span style="color:#FF79C6">}</span><span style="color:#F8F8F2">>Change Name&#x3C;/</span><span style="color:#FF79C6">button</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">    &#x3C;/</span><span style="color:#FF79C6">div</span><span style="color:#F8F8F2">></span></span>
+<span class="line"><span style="color:#F8F8F2">  )</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<p>比如说我们使用mutating data的方式，去直接改变数据，这个时候，user引用并没有改变，memo并不会发现Mycomponent的变化。</p>
+<p>但是如果我们使用immutable的方式，</p>
+<pre class="astro-code dracula" style="background-color:#282A36;color:#F8F8F2; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="jsx"><code><span class="line"><span style="color:#FF79C6">function</span><span style="color:#50FA7B"> updateUser</span><span style="color:#F8F8F2">() {</span></span>
+<span class="line"><span style="color:#50FA7B">  setUser</span><span style="color:#F8F8F2">({ </span><span style="color:#FF79C6">...</span><span style="color:#F8F8F2">user, name</span><span style="color:#FF79C6">:</span><span style="color:#E9F284"> '</span><span style="color:#F1FA8C">Bob</span><span style="color:#E9F284">'</span><span style="color:#F8F8F2"> }) </span><span style="color:#6272A4">// 这是不可变更新</span></span>
+<span class="line"><span style="color:#F8F8F2">}</span></span></code></pre>
+<p>这样memo才会发现Mycomponent的变化。进一步触发更新。</p>
+<p>所以如果所有的组件都被包裹上memo，但是用户可能使用mutating data的方式去修改props，这个时候可能就不会导致被memo组件的更新。</p>
+<p>所以组件性能优化的核心在于使用imutable的触发方式，同时更多的去memo props 是否更新来进一步判断是否需要重新渲染子组件，而不是默认对所有子组件进行memo，因为很有可能在某些地方采用了mutable的方式去变更数据，而此时的memo并不起作用。<a href="https://react.dev/reference/react/memo#should-you-add-memo-everywhere">react官方解释</a></p>
+<blockquote>
+<p><strong>When a context provider has a new value, *every* nested component that consumes that context will be forced to re-render</strong>.</p>
+</blockquote>
+<blockquote>
+<p><strong>That React Component Right Under Your Context Provider Should Probably Use <code>React.memo</code></strong></p>
+</blockquote>
+<p>react中，context.provider是通过比较值的引用地址来进一步判断消费他的组件是否需要变更。基本上使用了context的组件，建议都用memo包一层。</p>  </article> <footer class="mt-5">  <div class="flex items-center gap-2"> <a title="上一篇: 【AI基建】PI-Agent里面的核心库的区别" href="/posts/ai基建pi-agent里面的核心库的区别"> <span class="inline-block vertical-mid i-mdi-chevron-double-left w-4 h-4"></span> 上一篇: 【AI基建】PI-Agent里面的核心库的区别 </a> <a title="下一篇: 关于Vapor Mode现阶段进度的理解总结" href="/posts/vue vapor"> 下一篇: 关于Vapor Mode现阶段进度的理解总结 <span class="inline-block vertical-mid i-mdi-chevron-double-right w-4 h-4"></span> </a> </div> </footer>    </main> <footer class="transition-swup-footer py-7.5" lg="row-2-3 col-2-3" data-astro-cid-e5lvscu2> <p data-astro-cid-gcn2mc3v>© 2026 <a target="_blank" href="https://cathlee.github.io/">Yuer</a></p><p data-astro-cid-gcn2mc3v>Theme <a target="_blank" href="https://github.com/Moeyua/astro-theme-typography">Typography</a> by <a target="_blank" href="https://moeyua.com">Moeyua</a></p><p data-astro-cid-gcn2mc3v>Proudly published with <a target="_blank" href="https://astro.build/">Astro</a></p> </footer> <script type="module">document.addEventListener("animationend",e,!1);function e(){document.documentElement.classList.remove("animation-prepared"),document.removeEventListener("animationend",e,!1)}</script>  </body> </html> <script type="module">function u(e){const t=document.createElement("pre");return t.style.width="1px",t.style.height="1px",t.style.position="fixed",t.style.top="5px",t.textContent=e,t}function a(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e.textContent||"");const t=getSelection();if(t==null)return Promise.reject(new Error);t.removeAllRanges();const n=document.createRange();return n.selectNodeContents(e),t.addRange(n),document.execCommand("copy"),t.removeAllRanges(),Promise.resolve()}function i(e){if("clipboard"in navigator)return navigator.clipboard.writeText(e);const t=document.body;if(!t)return Promise.reject(new Error);const n=u(e);return t.appendChild(n),a(n),t.removeChild(n),Promise.resolve()}async function d(e){const t=e.getAttribute("for"),n=e.getAttribute("value");function o(){e.dispatchEvent(new CustomEvent("clipboard-copy",{bubbles:!0}))}if(e.getAttribute("aria-disabled")!=="true"){if(n)await i(n),o();else if(t){const r="getRootNode"in Element.prototype?e.getRootNode():e.ownerDocument;if(!(r instanceof Document||"ShadowRoot"in window&&r instanceof ShadowRoot))return;const c=r.getElementById(t);c&&(await p(c),o())}}}function p(e){return e instanceof HTMLInputElement||e instanceof HTMLTextAreaElement?i(e.value):e instanceof HTMLAnchorElement&&e.hasAttribute("href")?i(e.href):a(e)}function f(e){const t=e.currentTarget;t instanceof HTMLElement&&d(t)}function l(e){if(e.key===" "||e.key==="Enter"){const t=e.currentTarget;t instanceof HTMLElement&&(e.preventDefault(),d(t))}}function m(e){e.currentTarget.addEventListener("keydown",l)}function y(e){e.currentTarget.removeEventListener("keydown",l)}class h extends HTMLElement{static define(t="clipboard-copy",n=customElements){return n.define(t,this),this}constructor(){super(),this.addEventListener("click",f),this.addEventListener("focus",m),this.addEventListener("blur",y)}connectedCallback(){this.hasAttribute("tabindex")||this.setAttribute("tabindex","0"),this.hasAttribute("role")||this.setAttribute("role","button")}get value(){return this.getAttribute("value")||""}set value(t){this.setAttribute("value",t)}}const s=typeof globalThis<"u"?globalThis:window;try{s.ClipboardCopyElement=h.define()}catch(e){if(!(s.DOMException&&e instanceof DOMException&&e.name==="NotSupportedError")&&!(e instanceof ReferenceError))throw e}document.addEventListener("clipboard-copy",e=>{const n=e.target.querySelector(".icon");n.classList.replace("i-mdi-content-copy","i-mdi-check"),setTimeout(()=>{n.classList.replace("i-mdi-check","i-mdi-content-copy")},1500)});const b=Array.from(document.querySelectorAll("pre")),g="<div class='i-mdi-content-copy icon text-white'></div>";for(const e of b){const t=document.createElement("div");t.className="code-container";const n=document.createElement("clipboard-copy"),o=e.querySelector("code");n.value=o?.textContent??"",n.className="clipboard-copy",n.innerHTML=g,e.appendChild(n),e.parentNode?.insertBefore(t,e),t.appendChild(e)}</script> 

@@ -1,0 +1,2408 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>我的观点们</title><description>在这里记录我的一些技术观点和生活点滴。</description><link>https://cathlee.github.io/</link><item><title>【工程化】从一次自定义 Babel 插件发现的问题开始的探索</title><link>https://cathlee.github.io/posts/webpack%20plugin/</link><guid isPermaLink="true">https://cathlee.github.io/posts/webpack%20plugin/</guid><pubDate>Sun, 30 Nov 2025 00:00:00 GMT</pubDate><content:encoded>&lt;h2&gt;前言&lt;/h2&gt;
+&lt;p&gt;最近在一个基于 Create React App 的项目中，我尝试编写一个自定义 Babel 插件来批量禁用 Button 组件。然而实践中遇到了一个奇怪的问题：使用 &lt;code&gt;addBabelPlugin&lt;/code&gt; 会导致页面白屏卡死，而使用 &lt;code&gt;addWebpackPlugin&lt;/code&gt; 却能正常工作。&lt;/p&gt;
+&lt;p&gt;这个问题引发了我对 Webpack 和 Babel 工作机制的深入思考。在分析问题之前，我们先来系统性地梳理几个核心概念，这样更有助于理解问题的本质。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;一、编译时与运行时&lt;/h2&gt;
+&lt;p&gt;这是前端工程化中最基础也最重要的概念边界。&lt;/p&gt;
+&lt;h3&gt;1.1 概念定义&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;编译时 (Build Time)                      运行时 (Runtime)
+────────────────────────────────────────────────────────────
+npm run build                            用户打开浏览器
+     ↓                                        ↓
+源代码 → Babel/Webpack 处理 → bundle.js  →  浏览器加载执行
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;简单来说，编译时是代码从&quot;源码&quot;变成&quot;可执行文件&quot;的过程，运行时是代码在浏览器中实际执行的过程。&lt;/p&gt;
+&lt;h3&gt;1.2 编译时（Build Time）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;执行环境&lt;/strong&gt;：Node.js&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;触发时机&lt;/strong&gt;：执行 &lt;code&gt;npm run build&lt;/code&gt; 或 &lt;code&gt;npm start&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;主要工作&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Babel 转换 JSX/ES6+ 语法为浏览器可识别的代码&lt;/li&gt;
+&lt;li&gt;Webpack 解析依赖、打包所有模块&lt;/li&gt;
+&lt;li&gt;CSS 预处理器编译（Sass/Less → CSS）&lt;/li&gt;
+&lt;li&gt;代码压缩、Tree Shaking、资源优化&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;产物&lt;/strong&gt;：静态文件（JS、CSS、HTML、图片等）&lt;/p&gt;
+&lt;h3&gt;1.3 运行时（Runtime）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;执行环境&lt;/strong&gt;：浏览器&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;触发时机&lt;/strong&gt;：用户访问页面&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;主要工作&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;执行 JavaScript 代码&lt;/li&gt;
+&lt;li&gt;React/Vue 创建虚拟 DOM、渲染组件&lt;/li&gt;
+&lt;li&gt;事件监听与处理&lt;/li&gt;
+&lt;li&gt;状态管理与更新&lt;/li&gt;
+&lt;li&gt;API 请求与响应&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;产物&lt;/strong&gt;：用户可见的界面和交互&lt;/p&gt;
+&lt;h3&gt;1.4 实例解析&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;// 你写的源代码
+const App = () =&amp;gt; {
+  const [count, setCount] = useState(0);
+  return &amp;lt;Button onClick={() =&amp;gt; setCount(count + 1)}&amp;gt;{count}&amp;lt;/Button&amp;gt;;
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;编译时发生了什么？&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Babel 将 JSX 转换为 JavaScript：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const App = () =&amp;gt; {
+  const [count, setCount] = useState(0);
+  return React.createElement(
+    Button,
+    { onClick: () =&amp;gt; setCount(count + 1) },
+    count
+  );
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;运行时发生了什么？&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;1. 浏览器加载 bundle.js
+2. App 函数被调用
+3. useState(0) 初始化状态，count = 0
+4. React.createElement 创建虚拟 DOM
+5. React 将虚拟 DOM 渲染为真实 DOM
+6. 页面显示按钮，数字为 0
+7. 用户点击按钮
+8. onClick 触发，setCount(1) 被调用
+9. React 重新渲染，count 更新为 1
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;1.5 常见误区&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;误区&lt;/strong&gt;：Webpack 把代码打包成 bundle 是运行时的工作。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;纠正&lt;/strong&gt;：Webpack 的整个工作流程都属于编译时。运行时专指代码在浏览器中执行的阶段。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;编译时（全部在 Node.js 中完成）
+├── 解析入口文件
+├── Loader 处理各类文件
+├── 构建模块依赖图
+├── Plugin 介入各生命周期
+├── 代码分割、生成 Chunks
+└── 输出 Bundle 文件到 dist 目录
+
+运行时（在浏览器中）
+├── 下载并解析 HTML
+├── 加载 JS/CSS 资源
+├── 执行 JavaScript 代码
+├── 框架初始化与渲染
+└── 响应用户交互
+&lt;/code&gt;&lt;/pre&gt;
+&lt;hr /&gt;
+&lt;h2&gt;二、Module、Chunk、Bundle 的关系&lt;/h2&gt;
+&lt;p&gt;理解了编译时和运行时的边界，我们再来看看编译时 Webpack 内部是如何组织代码的。&lt;/p&gt;
+&lt;h3&gt;2.1 一句话概括&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;Module（模块）──→ 打包 ──→ Chunk（代码块）──→ 输出 ──→ Bundle（最终文件）
+   源文件                   中间产物                    输出产物
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;2.2 Module（模块）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;定义&lt;/strong&gt;：项目中的每一个源文件都是一个 Module。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;src/
+├── index.js        → 1 个 module
+├── App.jsx         → 1 个 module
+├── utils.js        → 1 个 module
+├── style.css       → 1 个 module（是的，CSS 也是模块）
+└── logo.png        → 1 个 module（图片也是模块）
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;在 Webpack 的世界里，一切皆模块。Module 是 Webpack 处理的最小单位。&lt;/p&gt;
+&lt;h3&gt;2.3 Chunk（代码块）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;定义&lt;/strong&gt;：一组相关 Module 的集合，是 Webpack 打包过程中的逻辑分组。&lt;/p&gt;
+&lt;p&gt;Chunk 存在于内存中，是一个抽象概念。它的产生方式有三种：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;1. 入口 Chunk&lt;/strong&gt;：每个 entry 配置产生一个&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;entry: {
+  main: &apos;./src/index.js&apos;,    // → main chunk
+  admin: &apos;./src/admin.js&apos;    // → admin chunk
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;2. 异步 Chunk&lt;/strong&gt;：动态 &lt;code&gt;import()&lt;/code&gt; 产生&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 这行代码会让 Webpack 生成一个新的 chunk
+const HeavyComponent = React.lazy(() =&amp;gt; import(&apos;./HeavyComponent&apos;));
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;3. 分割 Chunk&lt;/strong&gt;：&lt;code&gt;splitChunks&lt;/code&gt; 配置产生&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;optimization: {
+  splitChunks: {
+    cacheGroups: {
+      vendors: {
+        test: /[\\/]node_modules[\\/]/,
+        name: &apos;vendors&apos;  // → vendors chunk
+      }
+    }
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;2.4 Bundle（包）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;定义&lt;/strong&gt;：最终输出到 dist 目录的物理文件，是 Chunk 的落地形态。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;dist/
+├── main.js           → 来自 main chunk
+├── admin.js          → 来自 admin chunk
+├── vendors.js        → 来自 vendors chunk
+├── HeavyComponent.js → 来自异步 chunk
+└── main.css          → CSS 提取后的文件
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;2.5 完整流程示例&lt;/h3&gt;
+&lt;p&gt;假设有这样的项目结构和依赖关系：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// index.js (入口)
+import App from &apos;./App&apos;;
+import { helper } from &apos;./utils&apos;;
+import &apos;./style.css&apos;;
+
+// App.jsx
+import React from &apos;react&apos;;
+import lodash from &apos;lodash&apos;;
+const HeavyPage = React.lazy(() =&amp;gt; import(&apos;./HeavyPage&apos;)); // 动态导入
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Webpack 配置了代码分割：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;module.exports = {
+  entry: { main: &apos;./src/index.js&apos; },
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        vendors: { test: /[\\/]node_modules[\\/]/, name: &apos;vendors&apos; }
+      }
+    }
+  }
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;整个转换过程：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;Modules (6个)                 Chunks (3个)               Bundles (4个文件)
+─────────────────────────────────────────────────────────────────────────────
+index.js      ─┐
+App.jsx       ─┼────────→     main chunk    ────────→    dist/main.js
+utils.js      ─┘
+style.css     ──────────→     (CSS提取)     ────────→    dist/main.css
+
+react         ─┐
+react-dom     ─┼────────→     vendors chunk ────────→    dist/vendors.js
+lodash        ─┘
+
+HeavyPage.jsx ──────────→     async chunk   ────────→    dist/HeavyPage.js
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;2.6 三者对比总结&lt;/h3&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;维度&lt;/th&gt;
+&lt;th&gt;Module&lt;/th&gt;
+&lt;th&gt;Chunk&lt;/th&gt;
+&lt;th&gt;Bundle&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;是什么&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;源文件&lt;/td&gt;
+&lt;td&gt;模块的逻辑集合&lt;/td&gt;
+&lt;td&gt;输出的物理文件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;存在位置&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;源码目录（磁盘）&lt;/td&gt;
+&lt;td&gt;Webpack 内部（内存）&lt;/td&gt;
+&lt;td&gt;dist 目录（磁盘）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;数量关系&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;最多&lt;/td&gt;
+&lt;td&gt;中等&lt;/td&gt;
+&lt;td&gt;最少或等于 Chunk 数&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;可见性&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;开发者编写&lt;/td&gt;
+&lt;td&gt;抽象概念，不可见&lt;/td&gt;
+&lt;td&gt;最终产物，可见&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;简单记忆&lt;/strong&gt;：Module 是输入，Chunk 是过程，Bundle 是输出。&lt;/p&gt;
+&lt;h3&gt;2.7 为什么需要 Chunk 这个中间概念？&lt;/h3&gt;
+&lt;p&gt;Chunk 是实现&lt;strong&gt;代码分割&lt;/strong&gt;的关键，它让我们可以：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;按需加载&lt;/strong&gt;：用户只下载当前页面需要的代码&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;缓存优化&lt;/strong&gt;：第三方库单独打包，长期缓存&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;并行下载&lt;/strong&gt;：多个小文件并行加载比单个大文件更快&lt;/li&gt;
+&lt;/ol&gt;
+&lt;pre&gt;&lt;code&gt;没有代码分割：
+全部代码 → bundle.js (3MB) → 用户首屏等待 3 秒...
+
+有代码分割：
+核心代码    → main.js (100KB)      → 首屏 0.5 秒加载完成
+第三方库    → vendors.js (500KB)   → 浏览器缓存，二次访问秒开
+异步页面    → page-a.js (200KB)    → 用户点击时才加载
+&lt;/code&gt;&lt;/pre&gt;
+&lt;hr /&gt;
+&lt;h2&gt;三、Loader 与 Plugin 的区别&lt;/h2&gt;
+&lt;p&gt;有了前面的基础，我们再来看 Webpack 中两个最核心的扩展机制：Loader 和 Plugin。&lt;/p&gt;
+&lt;h3&gt;3.1 在构建流程中的位置&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;源文件 ──→ [Loader 处理] ──→ Module ──→ [打包] ──→ Chunk ──→ [Plugin 介入] ──→ Bundle
+           ↑                                              ↑
+        转换单个文件                                   控制整个流程
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;3.2 Loader（加载器）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;本质&lt;/strong&gt;：文件内容转换器。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;工作方式&lt;/strong&gt;：接收源文件内容，输出转换后的内容。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;特点&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;作用于单个文件&lt;/li&gt;
+&lt;li&gt;专注于&quot;转换&quot;这一件事&lt;/li&gt;
+&lt;li&gt;可以链式调用（从右到左执行）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;典型应用&lt;/strong&gt;：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;module.exports = {
+  module: {
+    rules: [
+      {
+        test: /\.jsx?$/,
+        use: &apos;babel-loader&apos;  // ES6+/JSX → ES5
+      },
+      {
+        test: /\.css$/,
+        use: [&apos;style-loader&apos;, &apos;css-loader&apos;]  // CSS → JS 模块
+      },
+      {
+        test: /\.scss$/,
+        use: [&apos;style-loader&apos;, &apos;css-loader&apos;, &apos;sass-loader&apos;]  // Sass → CSS → JS
+      },
+      {
+        test: /\.(png|jpg)$/,
+        use: &apos;file-loader&apos;  // 图片 → 带 hash 的文件引用
+      }
+    ]
+  }
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;3.3 Plugin（插件）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;本质&lt;/strong&gt;：构建流程的扩展点。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;工作方式&lt;/strong&gt;：监听 Webpack 生命周期事件，在特定时机执行自定义逻辑。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;特点&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;作用于整个构建流程&lt;/li&gt;
+&lt;li&gt;可以访问和修改 Compiler、Compilation 对象&lt;/li&gt;
+&lt;li&gt;能力更强，可以做任何事情&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;典型应用&lt;/strong&gt;：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const HtmlWebpackPlugin = require(&apos;html-webpack-plugin&apos;);
+const MiniCssExtractPlugin = require(&apos;mini-css-extract-plugin&apos;);
+const { BundleAnalyzerPlugin } = require(&apos;webpack-bundle-analyzer&apos;);
+
+module.exports = {
+  plugins: [
+    // 自动生成 HTML 并注入打包后的 JS
+    new HtmlWebpackPlugin({ template: &apos;./src/index.html&apos; }),
+
+    // 将 CSS 提取为单独文件
+    new MiniCssExtractPlugin({ filename: &apos;[name].[hash].css&apos; }),
+
+    // 定义全局常量（编译时替换）
+    new webpack.DefinePlugin({
+      &apos;process.env.NODE_ENV&apos;: JSON.stringify(&apos;production&apos;)
+    }),
+
+    // 分析打包结果
+    new BundleAnalyzerPlugin()
+  ]
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;3.4 核心差异总结&lt;/h3&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;维度&lt;/th&gt;
+&lt;th&gt;Loader&lt;/th&gt;
+&lt;th&gt;Plugin&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;作用范围&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;单个文件&lt;/td&gt;
+&lt;td&gt;整个构建流程&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;调用时机&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;模块被加载时&lt;/td&gt;
+&lt;td&gt;构建生命周期的各个阶段&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;功能定位&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;文件格式转换&lt;/td&gt;
+&lt;td&gt;流程扩展、资源优化&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;输入输出&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;文件内容 → 转换后的内容&lt;/td&gt;
+&lt;td&gt;访问完整的构建上下文&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;配置位置&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;module.rules&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;plugins&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;能力边界&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;只能处理文件内容&lt;/td&gt;
+&lt;td&gt;几乎无所不能&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;一句话区分&lt;/strong&gt;：Loader 让 Webpack 能够处理更多类型的文件，Plugin 让 Webpack 能够执行更多类型的任务。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;四、Babel Plugin 与 Webpack Plugin 的区别&lt;/h2&gt;
+&lt;p&gt;现在我们有了足够的背景知识，可以来分析 &lt;code&gt;addBabelPlugin&lt;/code&gt; 和 &lt;code&gt;addWebpackPlugin&lt;/code&gt; 的区别了。&lt;/p&gt;
+&lt;h3&gt;4.1 它们分别是什么？&lt;/h3&gt;
+&lt;p&gt;首先要明确：&lt;strong&gt;Babel Plugin 和 Webpack Plugin 是两个完全不同体系的东西&lt;/strong&gt;。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Babel Plugin&lt;/strong&gt;：Babel 转换器的扩展，用于修改 AST（抽象语法树）&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Webpack Plugin&lt;/strong&gt;：Webpack 构建流程的扩展，用于介入打包过程&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;它们只是恰好都叫&quot;Plugin&quot;，但工作机制完全不同。&lt;/p&gt;
+&lt;h3&gt;4.2 在构建流程中的位置&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;源代码 (JSX/ES6+)
+    ↓
+[babel-loader 调用 Babel]
+    ↓
+[Babel Plugin 在这里工作] ← addBabelPlugin 注入的插件
+    ↓
+转换后的 ES5 代码
+    ↓
+[Webpack 继续打包流程]
+    ↓
+[Webpack Plugin 在这里工作] ← addWebpackPlugin 注入的插件
+    ↓
+最终 Bundle
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;4.3 核心差异对比&lt;/h3&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;特性&lt;/th&gt;
+&lt;th&gt;Babel Plugin&lt;/th&gt;
+&lt;th&gt;Webpack Plugin&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;所属体系&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Babel&lt;/td&gt;
+&lt;td&gt;Webpack&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;处理时机&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;编译早期，在代码转换阶段&lt;/td&gt;
+&lt;td&gt;编译中后期，在打包/输出阶段&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;处理对象&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;单个文件的 AST&lt;/td&gt;
+&lt;td&gt;整个构建流程、所有资源&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;操作方式&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;遍历和修改语法树节点&lt;/td&gt;
+&lt;td&gt;监听生命周期钩子&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;对代码的理解&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;深度理解语法结构&lt;/td&gt;
+&lt;td&gt;只看到字符串/二进制内容&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;修改粒度&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;语法级别（精确到每个表达式）&lt;/td&gt;
+&lt;td&gt;文件级别（整个 chunk/bundle）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;典型用途&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;语法转换、代码注入、Polyfill&lt;/td&gt;
+&lt;td&gt;资源优化、代码分割、生成文件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3&gt;4.4 处理 JSX 的方式差异&lt;/h3&gt;
+&lt;p&gt;假设我们想给所有 &lt;code&gt;&amp;lt;Button&amp;gt;&lt;/code&gt; 添加 &lt;code&gt;disabled&lt;/code&gt; 属性：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Babel Plugin 的方式&lt;/strong&gt;（AST 层面）：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 源代码的 AST 表示（简化）
+{
+  type: &apos;JSXElement&apos;,
+  openingElement: {
+    name: { name: &apos;Button&apos; },
+    attributes: []  // ← Babel Plugin 在这里添加 disabled 属性
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Babel Plugin 理解代码结构，知道这是一个 JSX 元素，可以精确地修改它的属性。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Webpack Plugin 的方式&lt;/strong&gt;（字符串层面）：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// Webpack Plugin 看到的是已经转换好的代码字符串
+&apos;React.createElement(Button, null, &quot;Click&quot;)&apos;
+// ↓ 通过字符串替换
+&apos;React.createElement(Button, { disabled: true }, &quot;Click&quot;)&apos;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Webpack Plugin 不理解代码含义，只是做文本处理。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;五、问题分析：为什么 Babel Plugin 会导致白屏？&lt;/h2&gt;
+&lt;p&gt;有了前面的知识铺垫，我们终于可以深入分析最初的问题了。&lt;/p&gt;
+&lt;h3&gt;5.1 问题回顾&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;// 方案一：使用 addBabelPlugin
+module.exports = override(
+  addBabelPlugin(&apos;./my-disable-button-plugin&apos;)
+);
+// 结果：编译成功，但页面白屏卡死，无报错
+
+// 方案二：使用 addWebpackPlugin
+module.exports = override(
+  addWebpackPlugin(new MyDisableButtonPlugin())
+);
+// 结果：编译成功，页面正常，Button 被禁用
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;5.2 原因分析&lt;/h3&gt;
+&lt;p&gt;Babel Plugin 导致白屏的可能原因：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;1. AST 转换产生了无效代码&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Babel Plugin 操作的是语法树，如果转换逻辑有误，可能生成语法正确但运行时出错的代码：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 原始代码
+&amp;lt;Button onClick={handler}&amp;gt;Click&amp;lt;/Button&amp;gt;
+
+// 错误的 AST 转换可能产生
+&amp;lt;Button onClick={handler} disabled disabled={true}&amp;gt;Click&amp;lt;/Button&amp;gt;
+// 重复属性可能导致 React 行为异常
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;2. 产生了无限循环&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;如果你的 Babel Plugin 在修改节点后触发了重新访问：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 错误的插件写法
+visitor: {
+  JSXOpeningElement(path) {
+    // 添加属性后，如果不标记已处理，可能重复进入
+    path.node.attributes.push(/* disabled 属性 */);
+    // 没有跳过逻辑，可能导致无限循环
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;3. 静态分析的局限性&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Babel 只能做静态分析，无法处理动态情况：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 这种情况 Babel 可以处理
+&amp;lt;Button&amp;gt;Click&amp;lt;/Button&amp;gt;
+
+// 这种情况 Babel 无法正确处理
+const Comp = isAdmin ? Button : DisabledButton;
+&amp;lt;Comp&amp;gt;Click&amp;lt;/Comp&amp;gt;  // Babel 不知道 Comp 是什么
+
+// 或者
+const props = { onClick: handler };
+&amp;lt;Button {...props}&amp;gt;Click&amp;lt;/Button&amp;gt;  // 展开运算符增加了复杂性
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;4. 与其他 Babel 插件冲突&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;CRA 内置了很多 Babel 插件，你的插件可能与它们产生冲突，导致 AST 状态不一致。&lt;/p&gt;
+&lt;h3&gt;5.3 为什么 Webpack Plugin 能正常工作？&lt;/h3&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;工作时机更晚&lt;/strong&gt;：代码已经是合法的 JS，不存在 AST 一致性问题&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;操作更简单&lt;/strong&gt;：通常只是字符串替换，不涉及复杂的语法理解&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;影响范围可控&lt;/strong&gt;：可以精确控制处理哪些文件、哪些内容&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3&gt;5.4 调试建议&lt;/h3&gt;
+&lt;p&gt;如果你想继续使用 Babel Plugin，可以这样排查：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 添加日志，观察转换前后的代码
+module.exports = function() {
+  return {
+    visitor: {
+      JSXOpeningElement(path) {
+        if (path.node.name.name === &apos;Button&apos;) {
+          console.log(&apos;Before:&apos;, path.toString());
+
+          // 检查是否已经有 disabled 属性
+          const hasDisabled = path.node.attributes.some(
+            attr =&amp;gt; attr.name?.name === &apos;disabled&apos;
+          );
+
+          if (!hasDisabled) {
+            // 添加属性的逻辑
+          }
+
+          console.log(&apos;After:&apos;, path.toString());
+        }
+      }
+    }
+  };
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;hr /&gt;
+&lt;h2&gt;六、最佳实践：如何选择合适的方案？&lt;/h2&gt;
+&lt;h3&gt;6.1 根据需求选择&lt;/h3&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;需求场景&lt;/th&gt;
+&lt;th&gt;推荐方案&lt;/th&gt;
+&lt;th&gt;原因&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;语法转换（如 JSX → JS）&lt;/td&gt;
+&lt;td&gt;Babel Plugin&lt;/td&gt;
+&lt;td&gt;需要理解语法结构&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;添加 Polyfill&lt;/td&gt;
+&lt;td&gt;Babel Plugin&lt;/td&gt;
+&lt;td&gt;需要分析代码中使用的特性&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;简单的代码替换&lt;/td&gt;
+&lt;td&gt;Webpack Plugin&lt;/td&gt;
+&lt;td&gt;字符串处理更简单可控&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;全局注入变量&lt;/td&gt;
+&lt;td&gt;Webpack DefinePlugin&lt;/td&gt;
+&lt;td&gt;成熟方案，无需自己实现&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;动态控制组件行为&lt;/td&gt;
+&lt;td&gt;运行时方案（HOC/Context）&lt;/td&gt;
+&lt;td&gt;更灵活，可响应状态变化&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3&gt;6.2 禁用 Button 的推荐方案&lt;/h3&gt;
+&lt;p&gt;对于&quot;批量禁用 Button&quot;这个需求，我推荐使用&lt;strong&gt;运行时方案&lt;/strong&gt;：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;方案一：高阶组件（HOC）&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// withDisabled.js
+export const withDisabled = (Component) =&amp;gt; (props) =&amp;gt; (
+  &amp;lt;Component {...props} disabled={true} /&amp;gt;
+);
+
+// 使用
+import { Button } from &apos;antd&apos;;
+const DisabledButton = withDisabled(Button);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;方案二：Context 全局控制&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// DisableContext.js
+const DisableContext = React.createContext(false);
+
+export const DisableProvider = ({ disabled, children }) =&amp;gt; (
+  &amp;lt;DisableContext.Provider value={disabled}&amp;gt;
+    {children}
+  &amp;lt;/DisableContext.Provider&amp;gt;
+);
+
+export const useDisabled = () =&amp;gt; useContext(DisableContext);
+
+// Button 组件内部
+const Button = (props) =&amp;gt; {
+  const globalDisabled = useDisabled();
+  return &amp;lt;button {...props} disabled={props.disabled || globalDisabled} /&amp;gt;;
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;方案三：如果必须用编译时方案&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;使用 Webpack Plugin 做字符串替换会更稳定，但要注意边界情况。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;七、总结&lt;/h2&gt;
+&lt;p&gt;回顾整篇文章，我们从一个实际问题出发，系统性地梳理了前端工程化的核心概念：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;编译时 vs 运行时&lt;/strong&gt;：编译时在 Node.js 中把源码变成静态资源，运行时在浏览器中执行代码&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Module → Chunk → Bundle&lt;/strong&gt;：源文件经过 Webpack 处理，先按逻辑分组成 Chunk，最终输出为 Bundle 文件&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Loader vs Plugin&lt;/strong&gt;：Loader 转换单个文件内容，Plugin 扩展整个构建流程&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Babel Plugin vs Webpack Plugin&lt;/strong&gt;：前者操作 AST 修改代码语法，后者介入 Webpack 生命周期&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;理解这些概念后，我们就能解释最初的问题：Babel Plugin 操作 AST 容易出现转换错误或与其他插件冲突，而 Webpack Plugin 工作在更后期，操作更简单直接。&lt;/p&gt;
+&lt;p&gt;选择合适的方案，需要考虑需求的本质：是编译时确定还是运行时动态？是需要理解语法还是简单替换？搞清楚这些，就能做出正确的技术选型。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;参考资料&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://webpack.js.org/concepts/&quot;&gt;Webpack 官方文档 - Concepts&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://webpack.js.org/loaders/&quot;&gt;Webpack 官方文档 - Loaders&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://webpack.js.org/plugins/&quot;&gt;Webpack 官方文档 - Plugins&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://babeljs.io/docs/plugins&quot;&gt;Babel 官方文档 - Plugins&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/jamiebuilds/babel-handbook/blob/master/translations/zh-Hans/plugin-handbook.md&quot;&gt;Babel 插件手册&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/arackaf/customize-cra&quot;&gt;customize-cra 文档&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content:encoded><category>工程化</category><author>Yuer</author></item><item><title>【#1】2025-11-23周报</title><link>https://cathlee.github.io/posts/blog/</link><guid isPermaLink="true">https://cathlee.github.io/posts/blog/</guid><pubDate>Sun, 23 Nov 2025 00:00:00 GMT</pubDate><content:encoded>&lt;h3&gt;情绪&lt;/h3&gt;
+&lt;p&gt;最近看了&lt;a href=&quot;https://www.pseudoyu.com/&quot;&gt;pseudoyu&lt;/a&gt;的博客，突发奇想我的博客可以长期以这种周报的形式进行生活化记录。以前过于把博客工具化，只会收集一些负面的情绪和技术上遇到的问题，但事实上，文字可以拥有更多的记录方式，周报不是程式化日记，应该是一种对生活历程的回顾，毕竟我不希望自己在老了之后无法回忆起来自己25岁左右的《黄金时代》&lt;/p&gt;
+&lt;p&gt;最近有一点情绪处理上的长进是学会了将自己从&lt;strong&gt;受害者思维&lt;/strong&gt;中解脱出来，以往面对人际关系上的冲突时，我会下意识的“原谅”自己，毕竟这是过去的成长经历告诉我面对未知问题的唯一解决方式。准确的说，过去面对冲突时，我往往会下意识的转向情绪脑去处理，而不是考虑客观可能存在的事实，比如说&lt;strong&gt;我不愿意去解决我的一些性格底色--对人类执行的具体事情毫不在乎&lt;/strong&gt;。影响很深的一个场景是高中玩的很好的一个同桌形容我很擅长“事不关己高高挂起”（笑），我将这句话理解成我在大多数情况下比较冷漠。这个确实是事实，因此在职场在人际社会交往中，当我意识到这一点时，我会回收起一部分我的性格特质，去适应环境。&lt;strong&gt;同时对于冲突，我不再觉得是对我的攻击，而是对方的人格底色也同样存在问题，我能解决好的我的问题，对方也应该解决好自己的问题&lt;/strong&gt;。当大脑知道有具体的事情需要解决时，情绪脑便不太会影响我的决策。&lt;/p&gt;
+&lt;h3&gt;书&lt;/h3&gt;
+&lt;p&gt;上个月去了in 77附近的王小波书店，随便挑了两本《绿毛水怪》和《红拂夜奔》，找了个周六在湘湖边读完了绿毛水怪，树荫配着阳光和湖水再配着“水怪”(指书名)，真的很惬意。王小波很擅长BE，悲剧的内核似乎莫名的更容易打动我内心最感性的那一部分，无论是妖妖还是小红。&lt;/p&gt;
+&lt;p&gt;《红拂夜奔》相比之下非常晦涩难懂，因为有太多的时代隐喻和反讽，是一个比较沉重的书。刚开始读时，我个人会比较反感这种赤裸的批判问题，却又不给任何解决方法的书籍，虽然即使是现在也会很少看这种书。但是读到1/3时能理解了这种书，时代赋予人的能力终究是有限的，或者换句话说人的能力太有限了，能够在可以表达的范围去呐喊恼骚些什么或是唤醒些什么，已经是一件很不容易的生存方式了。寻找解决方法和结果本身并不是这种书的目的，能发人深省、引起共鸣，消极一部分人的苦闷便是书最大的意义。&lt;/p&gt;
+&lt;h3&gt;事情&lt;/h3&gt;
+&lt;p&gt;最近苦练摄影和在工作上尽量的去寻找难点去攻克。比如说对一直不太理解的webpack去做代码改写等类似功能去攻克，比如说写一个plugin把button全部禁用的插件时，我分不清楚&lt;em&gt;CRA&lt;/em&gt;的&lt;code&gt;addBabelPlugin&lt;/code&gt;和 &lt;code&gt;addWebpackPlugin&lt;/code&gt;的区别，甚至拿&lt;code&gt;addBabelPlugin&lt;/code&gt;写的会导致整个应用白屏，最终是使用&lt;code&gt;addWebpackPlugin&lt;/code&gt;结合&lt;code&gt;new NormalModuleReplacementPlugin&lt;/code&gt;去解决了。&lt;/p&gt;
+&lt;p&gt;摄影上会去ins上培养审美，然后去西湖边和家楼下随便拍拍。&lt;img src=&quot;../../../public/images/posts/DSC00619.JPG&quot; alt=&quot;DSC00619&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;../../../public/images/posts/DSC00072.JPG&quot; alt=&quot;DSC00072&quot; /&gt;&lt;/p&gt;
+&lt;h3&gt;Tricks&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;想写一个左侧是摄影图片，右侧是此景发生的场景的文字描述。这种构图的小卡片&lt;/li&gt;
+&lt;li&gt;将赵无极画作的色系和构图，用摄影的构图和调色去玩一遍&lt;/li&gt;
+&lt;/ul&gt;
+</content:encoded><category>blog</category><author>Yuer</author></item><item><title>【工程化】从一次自定义 Babel 插件发现的问题开始的探索</title><link>https://cathlee.github.io/posts/%E5%B7%A5%E7%A8%8B%E5%8C%96%E4%BB%8E%E4%B8%80%E6%AC%A1%E8%87%AA%E5%AE%9A%E4%B9%89-babel-%E6%8F%92%E4%BB%B6%E5%8F%91%E7%8E%B0%E7%9A%84%E9%97%AE%E9%A2%98%E5%BC%80%E5%A7%8B%E7%9A%84%E6%8E%A2%E7%B4%A2/</link><guid isPermaLink="true">https://cathlee.github.io/posts/%E5%B7%A5%E7%A8%8B%E5%8C%96%E4%BB%8E%E4%B8%80%E6%AC%A1%E8%87%AA%E5%AE%9A%E4%B9%89-babel-%E6%8F%92%E4%BB%B6%E5%8F%91%E7%8E%B0%E7%9A%84%E9%97%AE%E9%A2%98%E5%BC%80%E5%A7%8B%E7%9A%84%E6%8E%A2%E7%B4%A2/</guid><description>深入理解 Webpack 和 Babel 的工作机制，解析 addBabelPlugin 和 addWebpackPlugin 的区别</description><pubDate>Sat, 23 Aug 2025 00:00:00 GMT</pubDate><content:encoded>&lt;h1&gt;从一次自定义 Babel 插件发现的问题开始的探索&lt;/h1&gt;
+&lt;h2&gt;前言&lt;/h2&gt;
+&lt;p&gt;最近在一个基于 Create React App 的项目中，我尝试编写一个自定义 Babel 插件来批量禁用 Button 组件。然而实践中遇到了一个奇怪的问题：使用 &lt;code&gt;addBabelPlugin&lt;/code&gt; 会导致页面白屏卡死，而使用 &lt;code&gt;addWebpackPlugin&lt;/code&gt; 却能正常工作。&lt;/p&gt;
+&lt;p&gt;这个问题引发了我对 Webpack 和 Babel 工作机制的深入思考。在分析问题之前，我们先来系统性地梳理几个核心概念，这样更有助于理解问题的本质。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;一、编译时与运行时&lt;/h2&gt;
+&lt;p&gt;这是前端工程化中最基础也最重要的概念边界。&lt;/p&gt;
+&lt;h3&gt;1.1 概念定义&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;编译时 (Build Time)                      运行时 (Runtime)
+────────────────────────────────────────────────────────────
+npm run build                            用户打开浏览器
+     ↓                                        ↓
+源代码 → Babel/Webpack 处理 → bundle.js  →  浏览器加载执行
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;简单来说，编译时是代码从&quot;源码&quot;变成&quot;可执行文件&quot;的过程，运行时是代码在浏览器中实际执行的过程。&lt;/p&gt;
+&lt;h3&gt;1.2 编译时（Build Time）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;执行环境&lt;/strong&gt;：Node.js&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;触发时机&lt;/strong&gt;：执行 &lt;code&gt;npm run build&lt;/code&gt; 或 &lt;code&gt;npm start&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;主要工作&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Babel 转换 JSX/ES6+ 语法为浏览器可识别的代码&lt;/li&gt;
+&lt;li&gt;Webpack 解析依赖、打包所有模块&lt;/li&gt;
+&lt;li&gt;CSS 预处理器编译（Sass/Less → CSS）&lt;/li&gt;
+&lt;li&gt;代码压缩、Tree Shaking、资源优化&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;产物&lt;/strong&gt;：静态文件（JS、CSS、HTML、图片等）&lt;/p&gt;
+&lt;h3&gt;1.3 运行时（Runtime）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;执行环境&lt;/strong&gt;：浏览器&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;触发时机&lt;/strong&gt;：用户访问页面&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;主要工作&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;执行 JavaScript 代码&lt;/li&gt;
+&lt;li&gt;React/Vue 创建虚拟 DOM、渲染组件&lt;/li&gt;
+&lt;li&gt;事件监听与处理&lt;/li&gt;
+&lt;li&gt;状态管理与更新&lt;/li&gt;
+&lt;li&gt;API 请求与响应&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;产物&lt;/strong&gt;：用户可见的界面和交互&lt;/p&gt;
+&lt;h3&gt;1.4 实例解析&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;// 你写的源代码
+const App = () =&amp;gt; {
+  const [count, setCount] = useState(0);
+  return &amp;lt;Button onClick={() =&amp;gt; setCount(count + 1)}&amp;gt;{count}&amp;lt;/Button&amp;gt;;
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;编译时发生了什么？&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Babel 将 JSX 转换为 JavaScript：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const App = () =&amp;gt; {
+  const [count, setCount] = useState(0);
+  return React.createElement(
+    Button,
+    { onClick: () =&amp;gt; setCount(count + 1) },
+    count
+  );
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;运行时发生了什么？&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;1. 浏览器加载 bundle.js
+2. App 函数被调用
+3. useState(0) 初始化状态，count = 0
+4. React.createElement 创建虚拟 DOM
+5. React 将虚拟 DOM 渲染为真实 DOM
+6. 页面显示按钮，数字为 0
+7. 用户点击按钮
+8. onClick 触发，setCount(1) 被调用
+9. React 重新渲染，count 更新为 1
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;1.5 常见误区&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;误区&lt;/strong&gt;：Webpack 把代码打包成 bundle 是运行时的工作。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;纠正&lt;/strong&gt;：Webpack 的整个工作流程都属于编译时。运行时专指代码在浏览器中执行的阶段。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;编译时（全部在 Node.js 中完成）
+├── 解析入口文件
+├── Loader 处理各类文件
+├── 构建模块依赖图
+├── Plugin 介入各生命周期
+├── 代码分割、生成 Chunks
+└── 输出 Bundle 文件到 dist 目录
+
+运行时（在浏览器中）
+├── 下载并解析 HTML
+├── 加载 JS/CSS 资源
+├── 执行 JavaScript 代码
+├── 框架初始化与渲染
+└── 响应用户交互
+&lt;/code&gt;&lt;/pre&gt;
+&lt;hr /&gt;
+&lt;h2&gt;二、Module、Chunk、Bundle 的关系&lt;/h2&gt;
+&lt;p&gt;理解了编译时和运行时的边界，我们再来看看编译时 Webpack 内部是如何组织代码的。&lt;/p&gt;
+&lt;h3&gt;2.1 一句话概括&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;Module（模块）──→ 打包 ──→ Chunk（代码块）──→ 输出 ──→ Bundle（最终文件）
+   源文件                   中间产物                    输出产物
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;2.2 Module（模块）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;定义&lt;/strong&gt;：项目中的每一个源文件都是一个 Module。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;src/
+├── index.js        → 1 个 module
+├── App.jsx         → 1 个 module
+├── utils.js        → 1 个 module
+├── style.css       → 1 个 module（是的，CSS 也是模块）
+└── logo.png        → 1 个 module（图片也是模块）
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;在 Webpack 的世界里，一切皆模块。Module 是 Webpack 处理的最小单位。&lt;/p&gt;
+&lt;h3&gt;2.3 Chunk（代码块）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;定义&lt;/strong&gt;：一组相关 Module 的集合，是 Webpack 打包过程中的逻辑分组。&lt;/p&gt;
+&lt;p&gt;Chunk 存在于内存中，是一个抽象概念。它的产生方式有三种：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;1. 入口 Chunk&lt;/strong&gt;：每个 entry 配置产生一个&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;entry: {
+  main: &apos;./src/index.js&apos;,    // → main chunk
+  admin: &apos;./src/admin.js&apos;    // → admin chunk
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;2. 异步 Chunk&lt;/strong&gt;：动态 &lt;code&gt;import()&lt;/code&gt; 产生&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 这行代码会让 Webpack 生成一个新的 chunk
+const HeavyComponent = React.lazy(() =&amp;gt; import(&apos;./HeavyComponent&apos;));
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;3. 分割 Chunk&lt;/strong&gt;：&lt;code&gt;splitChunks&lt;/code&gt; 配置产生&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;optimization: {
+  splitChunks: {
+    cacheGroups: {
+      vendors: {
+        test: /[\\/]node_modules[\\/]/,
+        name: &apos;vendors&apos;  // → vendors chunk
+      }
+    }
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;2.4 Bundle（包）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;定义&lt;/strong&gt;：最终输出到 dist 目录的物理文件，是 Chunk 的落地形态。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;dist/
+├── main.js           → 来自 main chunk
+├── admin.js          → 来自 admin chunk  
+├── vendors.js        → 来自 vendors chunk
+├── HeavyComponent.js → 来自异步 chunk
+└── main.css          → CSS 提取后的文件
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;2.5 完整流程示例&lt;/h3&gt;
+&lt;p&gt;假设有这样的项目结构和依赖关系：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// index.js (入口)
+import App from &apos;./App&apos;;
+import { helper } from &apos;./utils&apos;;
+import &apos;./style.css&apos;;
+
+// App.jsx
+import React from &apos;react&apos;;
+import lodash from &apos;lodash&apos;;
+const HeavyPage = React.lazy(() =&amp;gt; import(&apos;./HeavyPage&apos;)); // 动态导入
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Webpack 配置了代码分割：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;module.exports = {
+  entry: { main: &apos;./src/index.js&apos; },
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        vendors: { test: /[\\/]node_modules[\\/]/, name: &apos;vendors&apos; }
+      }
+    }
+  }
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;整个转换过程：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;Modules (6个)                 Chunks (3个)               Bundles (4个文件)
+─────────────────────────────────────────────────────────────────────────────
+index.js      ─┐
+App.jsx       ─┼────────→     main chunk    ────────→    dist/main.js
+utils.js      ─┘
+style.css     ──────────→     (CSS提取)     ────────→    dist/main.css
+
+react         ─┐
+react-dom     ─┼────────→     vendors chunk ────────→    dist/vendors.js
+lodash        ─┘
+
+HeavyPage.jsx ──────────→     async chunk   ────────→    dist/HeavyPage.js
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;2.6 三者对比总结&lt;/h3&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;维度&lt;/th&gt;
+&lt;th&gt;Module&lt;/th&gt;
+&lt;th&gt;Chunk&lt;/th&gt;
+&lt;th&gt;Bundle&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;是什么&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;源文件&lt;/td&gt;
+&lt;td&gt;模块的逻辑集合&lt;/td&gt;
+&lt;td&gt;输出的物理文件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;存在位置&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;源码目录（磁盘）&lt;/td&gt;
+&lt;td&gt;Webpack 内部（内存）&lt;/td&gt;
+&lt;td&gt;dist 目录（磁盘）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;数量关系&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;最多&lt;/td&gt;
+&lt;td&gt;中等&lt;/td&gt;
+&lt;td&gt;最少或等于 Chunk 数&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;可见性&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;开发者编写&lt;/td&gt;
+&lt;td&gt;抽象概念，不可见&lt;/td&gt;
+&lt;td&gt;最终产物，可见&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;简单记忆&lt;/strong&gt;：Module 是输入，Chunk 是过程，Bundle 是输出。&lt;/p&gt;
+&lt;h3&gt;2.7 为什么需要 Chunk 这个中间概念？&lt;/h3&gt;
+&lt;p&gt;Chunk 是实现&lt;strong&gt;代码分割&lt;/strong&gt;的关键，它让我们可以：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;按需加载&lt;/strong&gt;：用户只下载当前页面需要的代码&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;缓存优化&lt;/strong&gt;：第三方库单独打包，长期缓存&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;并行下载&lt;/strong&gt;：多个小文件并行加载比单个大文件更快&lt;/li&gt;
+&lt;/ol&gt;
+&lt;pre&gt;&lt;code&gt;没有代码分割：
+全部代码 → bundle.js (3MB) → 用户首屏等待 3 秒...
+
+有代码分割：
+核心代码    → main.js (100KB)      → 首屏 0.5 秒加载完成
+第三方库    → vendors.js (500KB)   → 浏览器缓存，二次访问秒开
+异步页面    → page-a.js (200KB)    → 用户点击时才加载
+&lt;/code&gt;&lt;/pre&gt;
+&lt;hr /&gt;
+&lt;h2&gt;三、Loader 与 Plugin 的区别&lt;/h2&gt;
+&lt;p&gt;有了前面的基础，我们再来看 Webpack 中两个最核心的扩展机制：Loader 和 Plugin。&lt;/p&gt;
+&lt;h3&gt;3.1 在构建流程中的位置&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;源文件 ──→ [Loader 处理] ──→ Module ──→ [打包] ──→ Chunk ──→ [Plugin 介入] ──→ Bundle
+           ↑                                              ↑
+        转换单个文件                                   控制整个流程
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;3.2 Loader（加载器）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;本质&lt;/strong&gt;：文件内容转换器。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;工作方式&lt;/strong&gt;：接收源文件内容，输出转换后的内容。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;特点&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;作用于单个文件&lt;/li&gt;
+&lt;li&gt;专注于&quot;转换&quot;这一件事&lt;/li&gt;
+&lt;li&gt;可以链式调用（从右到左执行）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;典型应用&lt;/strong&gt;：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;module.exports = {
+  module: {
+    rules: [
+      {
+        test: /\.jsx?$/,
+        use: &apos;babel-loader&apos;  // ES6+/JSX → ES5
+      },
+      {
+        test: /\.css$/,
+        use: [&apos;style-loader&apos;, &apos;css-loader&apos;]  // CSS → JS 模块
+      },
+      {
+        test: /\.scss$/,
+        use: [&apos;style-loader&apos;, &apos;css-loader&apos;, &apos;sass-loader&apos;]  // Sass → CSS → JS
+      },
+      {
+        test: /\.(png|jpg)$/,
+        use: &apos;file-loader&apos;  // 图片 → 带 hash 的文件引用
+      }
+    ]
+  }
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;3.3 Plugin（插件）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;本质&lt;/strong&gt;：构建流程的扩展点。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;工作方式&lt;/strong&gt;：监听 Webpack 生命周期事件，在特定时机执行自定义逻辑。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;特点&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;作用于整个构建流程&lt;/li&gt;
+&lt;li&gt;可以访问和修改 Compiler、Compilation 对象&lt;/li&gt;
+&lt;li&gt;能力更强，可以做任何事情&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;典型应用&lt;/strong&gt;：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const HtmlWebpackPlugin = require(&apos;html-webpack-plugin&apos;);
+const MiniCssExtractPlugin = require(&apos;mini-css-extract-plugin&apos;);
+const { BundleAnalyzerPlugin } = require(&apos;webpack-bundle-analyzer&apos;);
+
+module.exports = {
+  plugins: [
+    // 自动生成 HTML 并注入打包后的 JS
+    new HtmlWebpackPlugin({ template: &apos;./src/index.html&apos; }),
+    
+    // 将 CSS 提取为单独文件
+    new MiniCssExtractPlugin({ filename: &apos;[name].[hash].css&apos; }),
+    
+    // 定义全局常量（编译时替换）
+    new webpack.DefinePlugin({
+      &apos;process.env.NODE_ENV&apos;: JSON.stringify(&apos;production&apos;)
+    }),
+    
+    // 分析打包结果
+    new BundleAnalyzerPlugin()
+  ]
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;3.4 核心差异总结&lt;/h3&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;维度&lt;/th&gt;
+&lt;th&gt;Loader&lt;/th&gt;
+&lt;th&gt;Plugin&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;作用范围&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;单个文件&lt;/td&gt;
+&lt;td&gt;整个构建流程&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;调用时机&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;模块被加载时&lt;/td&gt;
+&lt;td&gt;构建生命周期的各个阶段&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;功能定位&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;文件格式转换&lt;/td&gt;
+&lt;td&gt;流程扩展、资源优化&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;输入输出&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;文件内容 → 转换后的内容&lt;/td&gt;
+&lt;td&gt;访问完整的构建上下文&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;配置位置&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;module.rules&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;plugins&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;能力边界&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;只能处理文件内容&lt;/td&gt;
+&lt;td&gt;几乎无所不能&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;一句话区分&lt;/strong&gt;：Loader 让 Webpack 能够处理更多类型的文件，Plugin 让 Webpack 能够执行更多类型的任务。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;四、Babel Plugin 与 Webpack Plugin 的区别&lt;/h2&gt;
+&lt;p&gt;现在我们有了足够的背景知识，可以来分析 &lt;code&gt;addBabelPlugin&lt;/code&gt; 和 &lt;code&gt;addWebpackPlugin&lt;/code&gt; 的区别了。&lt;/p&gt;
+&lt;h3&gt;4.1 它们分别是什么？&lt;/h3&gt;
+&lt;p&gt;首先要明确：&lt;strong&gt;Babel Plugin 和 Webpack Plugin 是两个完全不同体系的东西&lt;/strong&gt;。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Babel Plugin&lt;/strong&gt;：Babel 转换器的扩展，用于修改 AST（抽象语法树）&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Webpack Plugin&lt;/strong&gt;：Webpack 构建流程的扩展，用于介入打包过程&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;它们只是恰好都叫&quot;Plugin&quot;，但工作机制完全不同。&lt;/p&gt;
+&lt;h3&gt;4.2 在构建流程中的位置&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;源代码 (JSX/ES6+)
+    ↓
+[babel-loader 调用 Babel]
+    ↓
+[Babel Plugin 在这里工作] ← addBabelPlugin 注入的插件
+    ↓
+转换后的 ES5 代码
+    ↓
+[Webpack 继续打包流程]
+    ↓
+[Webpack Plugin 在这里工作] ← addWebpackPlugin 注入的插件
+    ↓
+最终 Bundle
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;4.3 核心差异对比&lt;/h3&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;特性&lt;/th&gt;
+&lt;th&gt;Babel Plugin&lt;/th&gt;
+&lt;th&gt;Webpack Plugin&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;所属体系&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;Babel&lt;/td&gt;
+&lt;td&gt;Webpack&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;处理时机&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;编译早期，在代码转换阶段&lt;/td&gt;
+&lt;td&gt;编译中后期，在打包/输出阶段&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;处理对象&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;单个文件的 AST&lt;/td&gt;
+&lt;td&gt;整个构建流程、所有资源&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;操作方式&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;遍历和修改语法树节点&lt;/td&gt;
+&lt;td&gt;监听生命周期钩子&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;对代码的理解&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;深度理解语法结构&lt;/td&gt;
+&lt;td&gt;只看到字符串/二进制内容&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;修改粒度&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;语法级别（精确到每个表达式）&lt;/td&gt;
+&lt;td&gt;文件级别（整个 chunk/bundle）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;典型用途&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;语法转换、代码注入、Polyfill&lt;/td&gt;
+&lt;td&gt;资源优化、代码分割、生成文件&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3&gt;4.4 处理 JSX 的方式差异&lt;/h3&gt;
+&lt;p&gt;假设我们想给所有 &lt;code&gt;&amp;lt;Button&amp;gt;&lt;/code&gt; 添加 &lt;code&gt;disabled&lt;/code&gt; 属性：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Babel Plugin 的方式&lt;/strong&gt;（AST 层面）：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 源代码的 AST 表示（简化）
+{
+  type: &apos;JSXElement&apos;,
+  openingElement: {
+    name: { name: &apos;Button&apos; },
+    attributes: []  // ← Babel Plugin 在这里添加 disabled 属性
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Babel Plugin 理解代码结构，知道这是一个 JSX 元素，可以精确地修改它的属性。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Webpack Plugin 的方式&lt;/strong&gt;（字符串层面）：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// Webpack Plugin 看到的是已经转换好的代码字符串
+&apos;React.createElement(Button, null, &quot;Click&quot;)&apos;
+// ↓ 通过字符串替换
+&apos;React.createElement(Button, { disabled: true }, &quot;Click&quot;)&apos;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Webpack Plugin 不理解代码含义，只是做文本处理。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;五、问题分析：为什么 Babel Plugin 会导致白屏？&lt;/h2&gt;
+&lt;p&gt;有了前面的知识铺垫，我们终于可以深入分析最初的问题了。&lt;/p&gt;
+&lt;h3&gt;5.1 问题回顾&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;// 方案一：使用 addBabelPlugin
+module.exports = override(
+  addBabelPlugin(&apos;./my-disable-button-plugin&apos;)
+);
+// 结果：编译成功，但页面白屏卡死，无报错
+
+// 方案二：使用 addWebpackPlugin  
+module.exports = override(
+  addWebpackPlugin(new MyDisableButtonPlugin())
+);
+// 结果：编译成功，页面正常，Button 被禁用
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;5.2 原因分析&lt;/h3&gt;
+&lt;p&gt;Babel Plugin 导致白屏的可能原因：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;1. AST 转换产生了无效代码&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Babel Plugin 操作的是语法树，如果转换逻辑有误，可能生成语法正确但运行时出错的代码：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 原始代码
+&amp;lt;Button onClick={handler}&amp;gt;Click&amp;lt;/Button&amp;gt;
+
+// 错误的 AST 转换可能产生
+&amp;lt;Button onClick={handler} disabled disabled={true}&amp;gt;Click&amp;lt;/Button&amp;gt;
+// 重复属性可能导致 React 行为异常
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;2. 产生了无限循环&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;如果你的 Babel Plugin 在修改节点后触发了重新访问：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 错误的插件写法
+visitor: {
+  JSXOpeningElement(path) {
+    // 添加属性后，如果不标记已处理，可能重复进入
+    path.node.attributes.push(/* disabled 属性 */);
+    // 没有跳过逻辑，可能导致无限循环
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;3. 静态分析的局限性&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Babel 只能做静态分析，无法处理动态情况：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 这种情况 Babel 可以处理
+&amp;lt;Button&amp;gt;Click&amp;lt;/Button&amp;gt;
+
+// 这种情况 Babel 无法正确处理
+const Comp = isAdmin ? Button : DisabledButton;
+&amp;lt;Comp&amp;gt;Click&amp;lt;/Comp&amp;gt;  // Babel 不知道 Comp 是什么
+
+// 或者
+const props = { onClick: handler };
+&amp;lt;Button {...props}&amp;gt;Click&amp;lt;/Button&amp;gt;  // 展开运算符增加了复杂性
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;4. 与其他 Babel 插件冲突&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;CRA 内置了很多 Babel 插件，你的插件可能与它们产生冲突，导致 AST 状态不一致。&lt;/p&gt;
+&lt;h3&gt;5.3 为什么 Webpack Plugin 能正常工作？&lt;/h3&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;工作时机更晚&lt;/strong&gt;：代码已经是合法的 JS，不存在 AST 一致性问题&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;操作更简单&lt;/strong&gt;：通常只是字符串替换，不涉及复杂的语法理解&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;影响范围可控&lt;/strong&gt;：可以精确控制处理哪些文件、哪些内容&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3&gt;5.4 调试建议&lt;/h3&gt;
+&lt;p&gt;如果你想继续使用 Babel Plugin，可以这样排查：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 添加日志，观察转换前后的代码
+module.exports = function() {
+  return {
+    visitor: {
+      JSXOpeningElement(path) {
+        if (path.node.name.name === &apos;Button&apos;) {
+          console.log(&apos;Before:&apos;, path.toString());
+          
+          // 检查是否已经有 disabled 属性
+          const hasDisabled = path.node.attributes.some(
+            attr =&amp;gt; attr.name?.name === &apos;disabled&apos;
+          );
+          
+          if (!hasDisabled) {
+            // 添加属性的逻辑
+          }
+          
+          console.log(&apos;After:&apos;, path.toString());
+        }
+      }
+    }
+  };
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;hr /&gt;
+&lt;h2&gt;六、最佳实践：如何选择合适的方案？&lt;/h2&gt;
+&lt;h3&gt;6.1 根据需求选择&lt;/h3&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;需求场景&lt;/th&gt;
+&lt;th&gt;推荐方案&lt;/th&gt;
+&lt;th&gt;原因&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;语法转换（如 JSX → JS）&lt;/td&gt;
+&lt;td&gt;Babel Plugin&lt;/td&gt;
+&lt;td&gt;需要理解语法结构&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;添加 Polyfill&lt;/td&gt;
+&lt;td&gt;Babel Plugin&lt;/td&gt;
+&lt;td&gt;需要分析代码中使用的特性&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;简单的代码替换&lt;/td&gt;
+&lt;td&gt;Webpack Plugin&lt;/td&gt;
+&lt;td&gt;字符串处理更简单可控&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;全局注入变量&lt;/td&gt;
+&lt;td&gt;Webpack DefinePlugin&lt;/td&gt;
+&lt;td&gt;成熟方案，无需自己实现&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;动态控制组件行为&lt;/td&gt;
+&lt;td&gt;运行时方案（HOC/Context）&lt;/td&gt;
+&lt;td&gt;更灵活，可响应状态变化&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3&gt;6.2 禁用 Button 的推荐方案&lt;/h3&gt;
+&lt;p&gt;对于&quot;批量禁用 Button&quot;这个需求，我推荐使用&lt;strong&gt;运行时方案&lt;/strong&gt;：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;方案一：高阶组件（HOC）&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// withDisabled.js
+export const withDisabled = (Component) =&amp;gt; (props) =&amp;gt; (
+  &amp;lt;Component {...props} disabled={true} /&amp;gt;
+);
+
+// 使用
+import { Button } from &apos;antd&apos;;
+const DisabledButton = withDisabled(Button);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;方案二：Context 全局控制&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// DisableContext.js
+const DisableContext = React.createContext(false);
+
+export const DisableProvider = ({ disabled, children }) =&amp;gt; (
+  &amp;lt;DisableContext.Provider value={disabled}&amp;gt;
+    {children}
+  &amp;lt;/DisableContext.Provider&amp;gt;
+);
+
+export const useDisabled = () =&amp;gt; useContext(DisableContext);
+
+// Button 组件内部
+const Button = (props) =&amp;gt; {
+  const globalDisabled = useDisabled();
+  return &amp;lt;button {...props} disabled={props.disabled || globalDisabled} /&amp;gt;;
+};
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;方案三：如果必须用编译时方案&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;使用 Webpack Plugin 做字符串替换会更稳定，但要注意边界情况。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;七、总结&lt;/h2&gt;
+&lt;p&gt;回顾整篇文章，我们从一个实际问题出发，系统性地梳理了前端工程化的核心概念：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;编译时 vs 运行时&lt;/strong&gt;：编译时在 Node.js 中把源码变成静态资源，运行时在浏览器中执行代码&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Module → Chunk → Bundle&lt;/strong&gt;：源文件经过 Webpack 处理，先按逻辑分组成 Chunk，最终输出为 Bundle 文件&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Loader vs Plugin&lt;/strong&gt;：Loader 转换单个文件内容，Plugin 扩展整个构建流程&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Babel Plugin vs Webpack Plugin&lt;/strong&gt;：前者操作 AST 修改代码语法，后者介入 Webpack 生命周期&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;理解这些概念后，我们就能解释最初的问题：Babel Plugin 操作 AST 容易出现转换错误或与其他插件冲突，而 Webpack Plugin 工作在更后期，操作更简单直接。&lt;/p&gt;
+&lt;p&gt;选择合适的方案，需要考虑需求的本质：是编译时确定还是运行时动态？是需要理解语法还是简单替换？搞清楚这些，就能做出正确的技术选型。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;h2&gt;参考资料&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://webpack.js.org/concepts/&quot;&gt;Webpack 官方文档 - Concepts&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://webpack.js.org/loaders/&quot;&gt;Webpack 官方文档 - Loaders&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://webpack.js.org/plugins/&quot;&gt;Webpack 官方文档 - Plugins&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://babeljs.io/docs/plugins&quot;&gt;Babel 官方文档 - Plugins&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/jamiebuilds/babel-handbook/blob/master/translations/zh-Hans/plugin-handbook.md&quot;&gt;Babel 插件手册&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/arackaf/customize-cra&quot;&gt;customize-cra 文档&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content:encoded><category>工程化</category><author>Yuer</author></item><item><title>【AI基建】pi-ai 之Provider鉴权解析--AI完整理解版</title><link>https://cathlee.github.io/posts/ai%E5%9F%BA%E5%BB%BApi-ai-%E4%B9%8Bprovider%E9%89%B4%E6%9D%83%E8%A7%A3%E6%9E%90--ai%E5%AE%8C%E6%95%B4%E7%90%86%E8%A7%A3%E7%89%88/</link><guid isPermaLink="true">https://cathlee.github.io/posts/ai%E5%9F%BA%E5%BB%BApi-ai-%E4%B9%8Bprovider%E9%89%B4%E6%9D%83%E8%A7%A3%E6%9E%90--ai%E5%AE%8C%E6%95%B4%E7%90%86%E8%A7%A3%E7%89%88/</guid><description>梳理 resolveProviderAuth()、raceWithAbortSignal() 和 InMemoryCredentialStore.enqueue() 之间的关系</description><pubDate>Sat, 23 Aug 2025 00:00:00 GMT</pubDate><content:encoded>&lt;h1&gt;pi-ai Provider 鉴权解析：理解梳理&lt;/h1&gt;
+&lt;p&gt;本文梳理 &lt;code&gt;resolveProviderAuth()&lt;/code&gt;、&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 和 &lt;code&gt;InMemoryCredentialStore.enqueue()&lt;/code&gt; 之间的关系。&lt;/p&gt;
+&lt;h2&gt;1. 整体职责&lt;/h2&gt;
+&lt;p&gt;这三部分分别解决三个不同问题：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;模块&lt;/th&gt;
+&lt;th&gt;主要职责&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;resolveProviderAuth()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;按优先级解析 provider 鉴权，并返回可用于请求的 &lt;code&gt;AuthResult&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;raceWithAbortSignal()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;让调用方可以在 signal 取消时立即停止等待异步操作&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;InMemoryCredentialStore.enqueue()&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;将同一 provider 的凭证写操作串行化，避免并发读改写冲突&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;它们的组合关系是：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;Provider 鉴权解析
+    ↓
+读取或修改 CredentialStore
+    ↓
+同一 provider 的修改进入 FIFO Promise 链
+    ↓
+调用方通过 AbortSignal 获得可取消的等待体验
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2&gt;2. &lt;code&gt;resolveProviderAuth()&lt;/code&gt; 的作用&lt;/h2&gt;
+&lt;pre&gt;&lt;code&gt;export function resolveProviderAuth(
+  provider: { id: string; auth: ProviderAuth },
+  credentials: CredentialStore,
+  authContext: AuthContext,
+  overrides?: AuthResolutionOverrides,
+): Promise&amp;lt;AuthResult | undefined&amp;gt; {
+  const signal = operationSignal(overrides?.signal);
+  return raceWithAbortSignal(
+    resolveProviderAuthWithSignal(provider, credentials, authContext, overrides, signal),
+    signal,
+  );
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;这里先通过 &lt;code&gt;operationSignal()&lt;/code&gt; 保证内部始终有一个具体的 &lt;code&gt;AbortSignal&lt;/code&gt;：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;signal ?? new AbortController().signal
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;然后启动真正的鉴权解析：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;resolveProviderAuthWithSignal(...)
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;最后用 &lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 包装其等待过程，使调用方在 signal abort 后可以立即收到取消错误。&lt;/p&gt;
+&lt;h3&gt;2.1 鉴权解析优先级&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;resolveProviderAuthWithSignal()&lt;/code&gt; 的主要顺序是：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;如果请求显式传入 &lt;code&gt;overrides.apiKey&lt;/code&gt;，优先使用该 API Key。&lt;/li&gt;
+&lt;li&gt;否则读取 CredentialStore 中该 provider 的已存凭证。&lt;/li&gt;
+&lt;li&gt;已存 OAuth 凭证走 OAuth 解析及必要的刷新。&lt;/li&gt;
+&lt;li&gt;已存 API Key 凭证走 API Key 解析。&lt;/li&gt;
+&lt;li&gt;如果存在已存凭证，但 provider 没有对应类型的处理器，返回 &lt;code&gt;undefined&lt;/code&gt;，不静默回退环境变量。&lt;/li&gt;
+&lt;li&gt;只有完全没有已存凭证时，才尝试环境变量、配置文件等 ambient credential。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;可概括为：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;请求覆盖值 &amp;gt; 已存凭证 &amp;gt; 环境凭证（仅在没有已存凭证时）
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2&gt;3. &lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 的作用&lt;/h2&gt;
+&lt;p&gt;它接收两个输入：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;operation: Promise&amp;lt;T&amp;gt;
+signal: AbortSignal
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;返回一个新的 Promise，让两个事件竞争：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;operation 成功或失败
+          与
+signal 发生 abort
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;谁先发生，谁决定返回 Promise 的结果。&lt;/p&gt;
+&lt;h3&gt;3.1 operation 先完成&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;operation 成功：返回 Promise &lt;code&gt;resolve(value)&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;operation 失败：返回 Promise &lt;code&gt;reject(error)&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;同时移除 abort 监听器。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;3.2 signal 先取消&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;返回 Promise 立即以 abort reason 拒绝。&lt;/li&gt;
+&lt;li&gt;调用方不再等待 operation。&lt;/li&gt;
+&lt;li&gt;operation 本身不一定停止，仍可能在后台继续。&lt;/li&gt;
+&lt;li&gt;代码继续观察 operation，避免它后续失败时产生未处理的 Promise rejection。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;因此准确表述是：&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 取消的是调用方的等待，不保证强制终止底层操作。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;底层操作要真正停止，必须自己接收并响应同一个 signal，例如：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;fetch(url, { signal });
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2&gt;4. &lt;code&gt;enqueue()&lt;/code&gt; 的作用&lt;/h2&gt;
+&lt;pre&gt;&lt;code&gt;private enqueue&amp;lt;T&amp;gt;(
+  providerId: string,
+  task: () =&amp;gt; Promise&amp;lt;T&amp;gt;,
+  options?: AuthOperationOptions,
+): Promise&amp;lt;T&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;它负责将同一 &lt;code&gt;providerId&lt;/code&gt; 下的凭证修改操作按进入顺序串行执行。&lt;/p&gt;
+&lt;p&gt;不同 provider 仍然可以并行：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;openai:    A → B → C
+anthropic: X → Y
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2&gt;5. &lt;code&gt;task&lt;/code&gt;、&lt;code&gt;previous&lt;/code&gt;、&lt;code&gt;queued&lt;/code&gt; 和 &lt;code&gt;tail&lt;/code&gt;&lt;/h2&gt;
+&lt;h3&gt;5.1 &lt;code&gt;task&lt;/code&gt;&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;task: () =&amp;gt; Promise&amp;lt;T&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;code&gt;task&lt;/code&gt; 是尚未执行的异步函数。只有调用 &lt;code&gt;task()&lt;/code&gt; 时才真正开始工作。&lt;/p&gt;
+&lt;p&gt;在 &lt;code&gt;modify()&lt;/code&gt; 中，task 通常执行：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;读取当前 credential
+→ 调用 fn(current)
+→ 等待新 credential
+→ 写回 Map
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;5.2 &lt;code&gt;previous&lt;/code&gt;&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;const previous = this.chains.get(providerId) ?? Promise.resolve();
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;code&gt;previous&lt;/code&gt; 是同一 provider 当前已登记的队尾 Promise。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;有前置任务：等待它真正结束。&lt;/li&gt;
+&lt;li&gt;没有前置任务：使用已完成的 &lt;code&gt;Promise.resolve()&lt;/code&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;5.3 &lt;code&gt;queued&lt;/code&gt;&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;const queued = (async () =&amp;gt; {
+  await previous.catch(() =&amp;gt; {});
+  signal.throwIfAborted();
+  return task();
+})();
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;code&gt;queued&lt;/code&gt; 是当前完整排队工作的 Promise，表示：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;等待 previous 结束
+→ 检查当前任务是否已取消
+→ 执行 task() 一次
+→ 保存 task 的成功值或失败原因
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;立即执行函数的目的，是立即得到这个完整工作的 Promise，以便同步登记到 &lt;code&gt;chains&lt;/code&gt; 中。它也可以等价地写成：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const queued = previous
+  .catch(() =&amp;gt; {})
+  .then(() =&amp;gt; {
+    signal.throwIfAborted();
+    return task();
+  });
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;5.4 &lt;code&gt;tail&lt;/code&gt;&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;const tail = queued.catch(() =&amp;gt; {});
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;code&gt;tail&lt;/code&gt; 是从 &lt;code&gt;queued&lt;/code&gt; 派生出的内部安全队尾 Promise：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;queued 成功 → tail 成功
+queued 失败 → tail 吞掉错误后仍然成功
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;code&gt;tail&lt;/code&gt; 不代表新的任务，也不是函数。它只表示：&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;当前真实任务已经结束，不关心成功还是失败。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2&gt;6. 为什么使用 FIFO&lt;/h2&gt;
+&lt;p&gt;Credential 修改属于异步“读—修改—写”：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const current = this.credentials.get(providerId);
+const next = await fn(current);
+this.credentials.set(providerId, next);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;如果两个操作并发执行，可能都读到同一个旧 credential：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;A 读取 token0
+B 读取 token0
+A 刷新并写入 token1
+B 仍基于 token0 刷新并写入 token2
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;这可能造成重复刷新、refresh token 轮换冲突或新值被覆盖。&lt;/p&gt;
+&lt;p&gt;FIFO 后：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;A 读取 token0 → 写入 token1
+B 等待 A → 读取 token1 → 基于最新状态继续
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2&gt;7. 队尾登记与清理&lt;/h2&gt;
+&lt;pre&gt;&lt;code&gt;this.chains.set(providerId, tail);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;这一步立即把当前任务登记为该 provider 的最新队尾。之后的新任务会将这个 &lt;code&gt;tail&lt;/code&gt; 作为自己的 &lt;code&gt;previous&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;清理代码：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;void tail.then(() =&amp;gt; {
+  if (this.chains.get(providerId) === tail) {
+    this.chains.delete(providerId);
+  }
+});
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;code&gt;tail.then()&lt;/code&gt; 不执行 task，只注册一个完成后的清理回调。&lt;/p&gt;
+&lt;p&gt;判断引用相等是为了防止旧任务删除新任务的队尾：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;A 登记 tailA
+B 随后登记 tailB
+A 完成时发现当前队尾已经是 tailB，因此不能删除
+B 完成且没有后续任务时，才删除队列记录
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2&gt;8. 为什么返回 &lt;code&gt;raceWithAbortSignal(queued, signal)&lt;/code&gt;&lt;/h2&gt;
+&lt;pre&gt;&lt;code&gt;return raceWithAbortSignal(queued, signal);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;返回给调用方的不能是 &lt;code&gt;tail&lt;/code&gt;，因为 &lt;code&gt;tail&lt;/code&gt; 已经吞掉了任务错误。调用方需要看到：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;task 的成功值；&lt;/li&gt;
+&lt;li&gt;task 的原始错误；&lt;/li&gt;
+&lt;li&gt;signal abort 后的取消错误。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;因此返回的是对原始 &lt;code&gt;queued&lt;/code&gt; 的可取消等待包装。&lt;/p&gt;
+&lt;p&gt;内部和外部的职责分离如下：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;                   ┌→ tail：维护内部 FIFO 和清理 chains
+ task → queued ────┤
+                   └→ race Promise：向调用方返回成功、失败或取消
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2&gt;9. 完整执行时序&lt;/h2&gt;
+&lt;p&gt;同一 provider 连续进入 A、B 两个任务：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;A 创建 queuedA
+A 创建 tailA 并写入 chains
+A 向调用方返回 raceA
+
+B 读取 chains，得到 tailA
+B 创建 queuedB，等待 tailA
+B 创建 tailB 并覆盖 chains 中的队尾
+B 向调用方返回 raceB
+
+A 执行结束
+A 的 tail.then 发现当前队尾是 tailB，不删除 chains
+B 被放行并开始执行
+B 执行结束
+B 的 tail.then 发现当前队尾仍是 tailB，删除 chains
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;如果 A 的调用方提前取消：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;raceA 立即以 AbortError 结束调用方等待
+queuedA 可能仍在继续执行
+只有 queuedA 真正结束后 tailA 才完成
+B 因此不会提前与 A 并发执行
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2&gt;10. 一句话总结&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;queued&lt;/code&gt; 表示真实排队任务，&lt;code&gt;tail&lt;/code&gt; 表示不传播错误的内部队尾，&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 返回调用方可取消的等待结果；三者分离后，系统同时获得“同一 provider 写操作严格串行”和“调用方取消后立即停止等待”两种能力。&lt;/p&gt;
+</content:encoded><category>AI基建</category><author>Yuer</author></item><item><title>【AI基建】pi-ai 之Provider鉴权解析--观点纠错</title><link>https://cathlee.github.io/posts/ai%E5%9F%BA%E5%BB%BApi-ai-%E4%B9%8Bprovider%E9%89%B4%E6%9D%83%E8%A7%A3%E6%9E%90--%E8%A7%82%E7%82%B9%E7%BA%A0%E9%94%99/</link><guid isPermaLink="true">https://cathlee.github.io/posts/ai%E5%9F%BA%E5%BB%BApi-ai-%E4%B9%8Bprovider%E9%89%B4%E6%9D%83%E8%A7%A3%E6%9E%90--%E8%A7%82%E7%82%B9%E7%BA%A0%E9%94%99/</guid><description>pi-ai Provider 鉴权解析中的关键语义纠错</description><pubDate>Sat, 23 Aug 2025 00:00:00 GMT</pubDate><content:encoded>&lt;h1&gt;pi-ai Provider 鉴权解析：观点纠错&lt;/h1&gt;
+&lt;h2&gt;总体判断&lt;/h2&gt;
+&lt;p&gt;你的整体方向已经接近正确：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;能区分 &lt;code&gt;task&lt;/code&gt;、&lt;code&gt;queued&lt;/code&gt;、&lt;code&gt;tail&lt;/code&gt; 和对外返回 Promise 的不同职责；&lt;/li&gt;
+&lt;li&gt;理解同一 provider 的凭证修改需要 FIFO；&lt;/li&gt;
+&lt;li&gt;理解 async IIFE 用于立即创建代表完整任务的 Promise；&lt;/li&gt;
+&lt;li&gt;理解 &lt;code&gt;tail.then()&lt;/code&gt; 是异步注册，不会阻塞后面的 &lt;code&gt;return&lt;/code&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;但还有五个关键语义需要修正：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;abort 不是“用户手动 reject”。&lt;/li&gt;
+&lt;li&gt;signal abort 后，&lt;code&gt;queued&lt;/code&gt; 不一定停止执行。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;catch(() =&amp;gt; {})&lt;/code&gt; 不是把错误留给 &lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 集中处理。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;tail&lt;/code&gt; 不是函数或普通 flag，而是 Promise 队尾哨兵。&lt;/li&gt;
+&lt;li&gt;FIFO 并不是“前一个失败后面的任务都不执行”，而是恰好保证后续任务仍能执行。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr /&gt;
+&lt;h2&gt;纠错 1：&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 不是判断用户是否手动 reject&lt;/h2&gt;
+&lt;h3&gt;原观点&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;统一使用 &lt;code&gt;raceWithAbortSignal&lt;/code&gt; 是为了判断用户是否有手动 reject 的行为，如果有则无需执行 queued 当前队列所代表的任务，直接返回。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;判断&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;不准确。&lt;/strong&gt;&lt;/p&gt;
+&lt;h3&gt;正确理解&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;AbortSignal&lt;/code&gt; 和 Promise rejection 是两个不同概念：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;reject(error)&lt;/code&gt;：让某个 Promise 进入 rejected 状态。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;controller.abort()&lt;/code&gt;：让对应的 &lt;code&gt;AbortSignal&lt;/code&gt; 进入 aborted 状态并触发 &lt;code&gt;abort&lt;/code&gt; 事件。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 监听的是：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;operation Promise 完成
+或者
+signal abort
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;不是监听“用户是否手动 reject”。&lt;/p&gt;
+&lt;h3&gt;还要注意&lt;/h3&gt;
+&lt;p&gt;signal abort 后，不一定“不执行 queued”。&lt;/p&gt;
+&lt;p&gt;分两种情况：&lt;/p&gt;
+&lt;h4&gt;queued 仍在等待 previous&lt;/h4&gt;
+&lt;pre&gt;&lt;code&gt;await previous.catch(() =&amp;gt; {});
+signal.throwIfAborted();
+return task();
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;这时 abort 会让 &lt;code&gt;signal.throwIfAborted()&lt;/code&gt; 抛错，&lt;code&gt;task()&lt;/code&gt; 不会开始。&lt;/p&gt;
+&lt;h4&gt;task 已经开始&lt;/h4&gt;
+&lt;p&gt;这时 &lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 只能让调用方停止等待。底层 task 是否停止，取决于 task 是否主动响应 signal。&lt;/p&gt;
+&lt;h3&gt;推荐表述&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 让 operation 与 signal abort 竞争。signal 先 abort 时，调用方立即收到取消错误；如果 task 尚未开始，后续的 &lt;code&gt;throwIfAborted()&lt;/code&gt; 会阻止它开始；如果 task 已经开始，race 本身不保证终止底层任务。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr /&gt;
+&lt;h2&gt;纠错 2：&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 不是“统一集中报错”&lt;/h2&gt;
+&lt;h3&gt;原观点&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;前面的错误先通过 &lt;code&gt;.catch(() =&amp;gt; {})&lt;/code&gt; 不处理，最后在 &lt;code&gt;raceWithAbortSignal&lt;/code&gt; 中统一处理。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;判断&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;错误。&lt;/strong&gt;&lt;/p&gt;
+&lt;h3&gt;正确理解&lt;/h3&gt;
+&lt;p&gt;代码里存在三个不同的错误通道，不能混为一谈。&lt;/p&gt;
+&lt;h4&gt;&lt;code&gt;previous.catch(() =&amp;gt; {})&lt;/code&gt;&lt;/h4&gt;
+&lt;pre&gt;&lt;code&gt;await previous.catch(() =&amp;gt; {});
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;作用：忽略前一个任务的失败状态，让当前任务仍然可以执行。&lt;/p&gt;
+&lt;p&gt;前一个任务的错误已经通过前一个调用自己的返回 Promise 交给了前一个调用方。当前任务不应该再次继承它。&lt;/p&gt;
+&lt;h4&gt;&lt;code&gt;queued.catch(() =&amp;gt; {})&lt;/code&gt;&lt;/h4&gt;
+&lt;pre&gt;&lt;code&gt;const tail = queued.catch(() =&amp;gt; {});
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;作用：产生一个不会 rejected 的内部队尾 &lt;code&gt;tail&lt;/code&gt;，用于 FIFO 排队和完成清理。&lt;/p&gt;
+&lt;p&gt;它没有改变原始 &lt;code&gt;queued&lt;/code&gt;：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;queued 仍然保留原始错误
+tail 吞掉该错误并正常完成
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4&gt;&lt;code&gt;raceWithAbortSignal(queued, signal)&lt;/code&gt;&lt;/h4&gt;
+&lt;p&gt;作用：将“当前 queued 的成功/失败”或“当前 signal 的取消”返回给当前调用方。&lt;/p&gt;
+&lt;p&gt;它不会收集之前所有被 catch 的错误，也不是错误聚合器。&lt;/p&gt;
+&lt;h3&gt;推荐表述&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;previous.catch()&lt;/code&gt; 用于隔离前一任务的失败；&lt;code&gt;queued.catch()&lt;/code&gt; 用于生成不会失败的内部队尾；原始 &lt;code&gt;queued&lt;/code&gt; 的错误仍由 &lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 返回给当前调用方。它们分别服务于队列连续性、内部状态管理和当前调用结果，并非统一延迟报错。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr /&gt;
+&lt;h2&gt;纠错 3：&lt;code&gt;tail&lt;/code&gt; 不是函数，也不只是布尔 flag&lt;/h2&gt;
+&lt;h3&gt;原观点&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这里有个尾巴 tail 的函数 flag。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;判断&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;不准确。&lt;/strong&gt;&lt;/p&gt;
+&lt;h3&gt;正确理解&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;tail&lt;/code&gt; 是一个 Promise 对象：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const tail: Promise&amp;lt;T | void&amp;gt; = queued.catch(() =&amp;gt; {});
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;更准确地说，它是“内部队尾哨兵 Promise”：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;它的 pending 表示真实任务尚未结束；&lt;/li&gt;
+&lt;li&gt;它的 fulfilled 表示真实任务已经结束；&lt;/li&gt;
+&lt;li&gt;它不会 rejected，因为错误被 catch 转换成正常完成；&lt;/li&gt;
+&lt;li&gt;它的对象引用还用于判断自己是否仍是最新队尾。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre&gt;&lt;code&gt;this.chains.get(providerId) === tail
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;这个判断比较的是 Promise 对象引用，不是某个布尔状态。&lt;/p&gt;
+&lt;h3&gt;推荐表述&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;tail&lt;/code&gt; 是从 &lt;code&gt;queued&lt;/code&gt; 派生出的、不会失败的队尾 Promise。它既作为后续任务的等待对象，也作为清理时判断“当前任务是否仍是最新队尾”的引用哨兵。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr /&gt;
+&lt;h2&gt;纠错 4：&lt;code&gt;tail.then()&lt;/code&gt; 不处理 task&lt;/h2&gt;
+&lt;h3&gt;原观点&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;tail.then&lt;/code&gt; 去处理 task 任务；queue 执行 task 完成之后删除 tail。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;判断&lt;/h3&gt;
+&lt;p&gt;前半句&lt;strong&gt;错误&lt;/strong&gt;，后半句方向正确但表达需要精确。&lt;/p&gt;
+&lt;h3&gt;正确理解&lt;/h3&gt;
+&lt;p&gt;真正执行 task 的地方只有：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;return task();
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;code&gt;tail.then()&lt;/code&gt; 只注册清理回调：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;void tail.then(() =&amp;gt; {
+  if (this.chains.get(providerId) === tail) {
+    this.chains.delete(providerId);
+  }
+});
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;任务结束后删除的不是局部变量 &lt;code&gt;tail&lt;/code&gt;。局部变量会由垃圾回收自动处理。这里删除的是：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;this.chains` Map 中的 providerId 条目
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;而且只有它仍是最新队尾时才删除。&lt;/p&gt;
+&lt;h3&gt;推荐表述&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;task()&lt;/code&gt; 在 &lt;code&gt;queued&lt;/code&gt; 的 async IIFE 中执行一次。&lt;code&gt;tail.then()&lt;/code&gt; 只在任务完成后检查该 tail 是否仍是 provider 的最新队尾；如果是，就删除 &lt;code&gt;chains&lt;/code&gt; 中对应的 providerId 记录。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr /&gt;
+&lt;h2&gt;纠错 5：FIFO 后，前一个任务失败不会阻止后面的任务&lt;/h2&gt;
+&lt;h3&gt;原观点&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;FIFO 是为了让任务串行，前一个失败后面的任务都不会执行。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;判断&lt;/h3&gt;
+&lt;p&gt;前半句正确，后半句正好相反。&lt;/p&gt;
+&lt;h3&gt;正确理解&lt;/h3&gt;
+&lt;p&gt;FIFO 确实保证同一 provider 的任务按照进入顺序串行执行。&lt;/p&gt;
+&lt;p&gt;但是这行代码：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;await previous.catch(() =&amp;gt; {});
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;明确保证：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;前一个成功 → 当前任务继续
+前一个失败 → 吞掉前一个任务对当前链的影响，当前任务仍继续
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;前一个任务的调用方仍会收到前一个任务的错误，只是后一个任务不继承它。&lt;/p&gt;
+&lt;h3&gt;推荐表述&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;FIFO 保证同一 provider 的凭证写操作按进入顺序逐个执行。前一个任务无论成功还是失败，后一个任务都要等它真正结束；结束后，后一个任务仍然可以继续执行。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr /&gt;
+&lt;h2&gt;纠错 6：&lt;code&gt;queued&lt;/code&gt; 不是“立即开始执行 task”&lt;/h2&gt;
+&lt;h3&gt;原注释&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;})(); // 等待上一个任务完成后，立即开始执行新的任务
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;判断&lt;/h3&gt;
+&lt;p&gt;基本方向正确，但“立即”可能造成误解。&lt;/p&gt;
+&lt;h3&gt;正确理解&lt;/h3&gt;
+&lt;p&gt;创建 async IIFE 时，它会立即开始运行，但会先停在：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;await previous.catch(() =&amp;gt; {});
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;只有 previous 完成后，才会检查 signal 并调用 task：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;创建 queued Promise
+→ 等待 previous
+→ 检查 signal
+→ task() 开始
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3&gt;推荐注释&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;// Represent the current queued operation: wait for the previous tail,
+// re-check cancellation, then execute task once.
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;或者中文：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// 当前排队任务：等待前一队尾结束，重新检查取消状态，然后执行 task 一次。
+&lt;/code&gt;&lt;/pre&gt;
+&lt;hr /&gt;
+&lt;h2&gt;纠错 7：&lt;code&gt;this.chains.set(providerId, tail)&lt;/code&gt; 不是“重置尾巴”&lt;/h2&gt;
+&lt;h3&gt;原观点&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;把 queue 重置为尾巴；把当前尾部设置为当前链的尾部。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;判断&lt;/h3&gt;
+&lt;p&gt;表达不够准确。&lt;/p&gt;
+&lt;h3&gt;正确理解&lt;/h3&gt;
+&lt;p&gt;这里没有修改 &lt;code&gt;queued&lt;/code&gt;，也没有把 queued “重置”为 tail。&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const tail = queued.catch(() =&amp;gt; {});
+this.chains.set(providerId, tail);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;发生的是：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;从 &lt;code&gt;queued&lt;/code&gt; 派生一个新 Promise &lt;code&gt;tail&lt;/code&gt;；&lt;/li&gt;
+&lt;li&gt;将 &lt;code&gt;tail&lt;/code&gt; 保存为该 provider 当前最新的队尾；&lt;/li&gt;
+&lt;li&gt;后续任务进入时会读取这个 &lt;code&gt;tail&lt;/code&gt; 作为自己的 &lt;code&gt;previous&lt;/code&gt;。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3&gt;推荐表述&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;从真实任务 &lt;code&gt;queued&lt;/code&gt; 派生一个不会失败的 &lt;code&gt;tail&lt;/code&gt;，并将该 &lt;code&gt;tail&lt;/code&gt; 登记为 provider 当前最新队尾，供后续任务等待。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr /&gt;
+&lt;h2&gt;纠错 8：&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 不会主动 abort 接口&lt;/h2&gt;
+&lt;h3&gt;原观点&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;如果接口超时或用户主动取消，这个时候需要 abort 接口。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;判断&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;容易误导。&lt;/strong&gt;&lt;/p&gt;
+&lt;h3&gt;正确理解&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 自己只做：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;signal abort → 提前 reject 返回给调用方
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;它没有调用某个 API 去终止 operation。&lt;/p&gt;
+&lt;p&gt;真正的鉴权解析函数确实接收了同一个 signal：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;resolveProviderAuthWithSignal(..., signal)
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;其内部存储操作、OAuth 刷新或 API Key 解析如果继续把 signal 传给可取消的底层 IO，底层工作才可能真正终止。&lt;/p&gt;
+&lt;h3&gt;推荐表述&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;raceWithAbortSignal()&lt;/code&gt; 保证调用方可以及时结束等待；底层鉴权操作同时接收相同 signal，并应在网络或阻塞操作中主动响应它，从而尽可能真正停止工作。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr /&gt;
+&lt;h2&gt;纠错 9：你的最终代码注释中哪些可保留&lt;/h2&gt;
+&lt;p&gt;以下理解可以保留：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const previous = this.chains.get(providerId) ?? Promise.resolve();
+&lt;/code&gt;&lt;/pre&gt;
+&lt;blockquote&gt;
+&lt;p&gt;取得该 provider 当前的队尾；没有任务时使用已完成 Promise。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;pre&gt;&lt;code&gt;this.chains.set(providerId, tail);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;blockquote&gt;
+&lt;p&gt;将当前任务的安全完成 Promise 登记为最新队尾。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;pre&gt;&lt;code&gt;if (this.chains.get(providerId) === tail) {
+  this.chains.delete(providerId);
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;blockquote&gt;
+&lt;p&gt;只有当前任务仍是最新队尾时才删除，避免旧任务误删后续任务。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;pre&gt;&lt;code&gt;return raceWithAbortSignal(queued, signal);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;blockquote&gt;
+&lt;p&gt;向调用方返回 queued 与 signal abort 的竞争结果。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;需要修正的注释是：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;// tail 不是“正在执行 queued 的 Promise”
+// 更准确：tail 是跟随 queued 完成、但不传播 queued 错误的内部队尾 Promise
+&lt;/code&gt;&lt;/pre&gt;
+&lt;hr /&gt;
+&lt;h2&gt;推荐的最终注释版&lt;/h2&gt;
+&lt;pre&gt;&lt;code&gt;/**
+ * Serialize credential mutations per provider.
+ * Caller cancellation may stop waiting early, but the internal chain is held
+ * until the active task actually settles.
+ */
+private enqueue&amp;lt;T&amp;gt;(
+  providerId: string,
+  task: () =&amp;gt; Promise&amp;lt;T&amp;gt;,
+  options?: AuthOperationOptions,
+): Promise&amp;lt;T&amp;gt; {
+  const signal = operationSignal(options?.signal);
+
+  // The latest completion marker for this provider, or an already-completed
+  // Promise when no task is currently queued.
+  const previous = this.chains.get(providerId) ?? Promise.resolve();
+
+  // Represent the real queued operation: wait for the previous operation to
+  // settle, re-check cancellation, then execute task exactly once.
+  const queued = (async () =&amp;gt; {
+    await previous.catch(() =&amp;gt; {});
+    signal.throwIfAborted();
+    return task();
+  })();
+
+  // Internal queue tail: follows queued to completion but never rejects, so a
+  // failed task cannot break later tasks in the provider chain.
+  const tail = queued.catch(() =&amp;gt; {});
+  this.chains.set(providerId, tail);
+
+  // Remove the map entry only if this task is still the newest queue tail.
+  void tail.then(() =&amp;gt; {
+    if (this.chains.get(providerId) === tail) {
+      this.chains.delete(providerId);
+    }
+  });
+
+  // Preserve the task&apos;s success/error for the caller while allowing the
+  // caller to stop waiting immediately when its signal aborts.
+  return raceWithAbortSignal(queued, signal);
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h2&gt;最终准确表述&lt;/h2&gt;
+&lt;p&gt;可以把整段代码总结为：&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;enqueue()&lt;/code&gt; 为每个 provider 维护独立的 FIFO Promise 链。&lt;code&gt;queued&lt;/code&gt; 表示等待前项并执行当前 task 的真实任务；&lt;code&gt;tail&lt;/code&gt; 是不会传播错误的内部完成标记，保证失败不会破坏后续队列；&lt;code&gt;tail.then()&lt;/code&gt; 只负责安全清理最新队尾；对外则返回 &lt;code&gt;raceWithAbortSignal(queued, signal)&lt;/code&gt;，使调用方既能收到当前任务的真实成功或失败，也能在 signal abort 后立即停止等待。调用方取消等待并不必然终止已经开始的 task，内部 FIFO 仍会保持到真实任务完成。&lt;/p&gt;
+&lt;/blockquote&gt;
+</content:encoded><category>AI基建</category><author>Yuer</author></item><item><title>【性能优化】记录一次vite分包优化</title><link>https://cathlee.github.io/posts/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E8%AE%B0%E5%BD%95%E4%B8%80%E6%AC%A1vite%E5%88%86%E5%8C%85%E4%BC%98%E5%8C%96/</link><guid isPermaLink="true">https://cathlee.github.io/posts/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E8%AE%B0%E5%BD%95%E4%B8%80%E6%AC%A1vite%E5%88%86%E5%8C%85%E4%BC%98%E5%8C%96/</guid><description>使用 manualChunks、babel-plugin-lodash 等方式优化 Vite 项目的打包体积</description><pubDate>Sat, 23 Aug 2025 00:00:00 GMT</pubDate><content:encoded>&lt;h1&gt;记录一次vite分包优化&lt;/h1&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;使用 manualChunks 将第三方库分离到不同的 chunk 中&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) =&amp;gt; {
+          // 将 recharts 相关库分离到单独的 chunk 中
+          if (id.includes(&apos;node_modules/recharts&apos;) || 
+              id.includes(&apos;node_modules/d3&apos;) || 
+              id.includes(&apos;node_modules/victory&apos;)) {
+            return &apos;recharts&apos;;
+          }
+          // 将 lodash 分离到单独的 chunk 中
+          if (id.includes(&apos;node_modules/lodash&apos;)) {
+            return &apos;lodash&apos;;
+          }
+          // 将 React 相关库分离到单独的 chunk 中
+          if (id.includes(&apos;node_modules/react&apos;) || 
+              id.includes(&apos;node_modules/react-dom&apos;) || 
+              id.includes(&apos;node_modules/react-router-dom&apos;)) {
+            return &apos;react&apos;;
+          }
+          // 将其他第三方库分离到 vendors chunk
+          if (id.includes(&apos;node_modules&apos;)) {
+            return &apos;vendor&apos;;
+          }
+        }
+      }
+    },
+    // 启用 CSS 代码分割
+    cssCodeSplit: true,
+    // 启用源码映射，便于调试
+    sourcemap: false,
+    // 启用 chunk 大小警告的阈值（单位为 KB）
+    chunkSizeWarningLimit: 1000,
+  },
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;使用 babel-plugin-lodash 对 Lodash 进行 tree-shaking 优化&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;babel-plugin-import对rechart ui库进行 按需代码改写 优化&lt;/p&gt;
+&lt;p&gt;使用按需导入的方式导入 Recharts 组件&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;plugins: [
+    react({
+      babel: {
+        plugins: [
+          &apos;lodash&apos;, // 添加 babel-plugin-lodash 进行优化
+          // 添加 babel-plugin-import 插件，自动转换 Recharts 的导入语句
+          [&apos;import&apos;, {
+            libraryName: &apos;recharts&apos;,
+            libraryDirectory: &apos;lib&apos;,
+            camel2DashComponentName: false,
+            customName: (name: string) =&amp;gt; {
+              const mapping: Record&amp;lt;string, string&amp;gt; = {
+                // 图表类型
+                &apos;AreaChart&apos;: &apos;chart/AreaChart&apos;,
+                &apos;BarChart&apos;: &apos;chart/BarChart&apos;,
+                &apos;LineChart&apos;: &apos;chart/LineChart&apos;,
+                &apos;ComposedChart&apos;: &apos;chart/ComposedChart&apos;,
+                &apos;PieChart&apos;: &apos;chart/PieChart&apos;,
+                &apos;RadarChart&apos;: &apos;chart/RadarChart&apos;,
+                &apos;ScatterChart&apos;: &apos;chart/ScatterChart&apos;,
+                &apos;Treemap&apos;: &apos;chart/Treemap&apos;,
+                
+                // 笛卡尔组件
+                &apos;Area&apos;: &apos;cartesian/Area&apos;,
+                &apos;Bar&apos;: &apos;cartesian/Bar&apos;,
+                &apos;Line&apos;: &apos;cartesian/Line&apos;,
+                &apos;Scatter&apos;: &apos;cartesian/Scatter&apos;,
+                &apos;XAxis&apos;: &apos;cartesian/XAxis&apos;,
+                &apos;YAxis&apos;: &apos;cartesian/YAxis&apos;,
+                &apos;ZAxis&apos;: &apos;cartesian/ZAxis&apos;,
+                &apos;CartesianGrid&apos;: &apos;cartesian/CartesianGrid&apos;,
+                &apos;CartesianAxis&apos;: &apos;cartesian/CartesianAxis&apos;,
+                &apos;ReferenceLine&apos;: &apos;cartesian/ReferenceLine&apos;,
+                &apos;ReferenceDot&apos;: &apos;cartesian/ReferenceDot&apos;,
+                &apos;ReferenceArea&apos;: &apos;cartesian/ReferenceArea&apos;,
+                &apos;ErrorBar&apos;: &apos;cartesian/ErrorBar&apos;,
+                &apos;Brush&apos;: &apos;cartesian/Brush&apos;,
+                
+                // 组件
+                &apos;ResponsiveContainer&apos;: &apos;component/ResponsiveContainer&apos;,
+                &apos;Legend&apos;: &apos;component/Legend&apos;,
+                &apos;Tooltip&apos;: &apos;component/Tooltip&apos;,
+                &apos;Cell&apos;: &apos;component/Cell&apos;,
+                &apos;Text&apos;: &apos;component/Text&apos;,
+                &apos;Label&apos;: &apos;component/Label&apos;,
+                &apos;LabelList&apos;: &apos;component/LabelList&apos;,
+              };
+              
+              return `recharts/lib/${mapping[name] || name}`;
+            }
+          }]
+        ]
+      }
+    }),
+    tailwindcss(),
+    visualizer({
+      filename: &quot;./stats.html&quot;, // 明确指定输出文件名
+      open: true, // 构建后自动打开
+      brotliSize: true,
+    }),
+  ],
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;使用更智能的分包策略，将相关依赖分组到同一个 chunk 中&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;旧&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;image-20250609215319158&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;image-20250609215051818&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;新&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;image-20250609215326714&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;image-20250609215126726&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;性能优化近80%&lt;/p&gt;
+</content:encoded><category>性能优化</category><author>Yuer</author></item><item><title>【AI基建】PI-Agent里面的核心库的区别</title><link>https://cathlee.github.io/posts/ai%E5%9F%BA%E5%BB%BApi-agent%E9%87%8C%E9%9D%A2%E7%9A%84%E6%A0%B8%E5%BF%83%E5%BA%93%E7%9A%84%E5%8C%BA%E5%88%AB/</link><guid isPermaLink="true">https://cathlee.github.io/posts/ai%E5%9F%BA%E5%BB%BApi-agent%E9%87%8C%E9%9D%A2%E7%9A%84%E6%A0%B8%E5%BF%83%E5%BA%93%E7%9A%84%E5%8C%BA%E5%88%AB/</guid><description>解析 pi-agent-core、pi-coding-agent、pi-ai 三个核心库的职责区别</description><pubDate>Sat, 23 Aug 2025 00:00:00 GMT</pubDate><content:encoded>&lt;h3&gt;&lt;code&gt;pi-agent-core&lt;/code&gt;&lt;/h3&gt;
+&lt;p&gt;通用的 agent 运行时逻辑,不含 UI 或 CLI 交互,主要包括 &lt;code&gt;Agent&lt;/code&gt;、&lt;code&gt;agentLoop&lt;/code&gt;、&lt;code&gt;AgentState&lt;/code&gt;、&lt;code&gt;AgentHarness&lt;/code&gt;、&lt;code&gt;SessionRepository&lt;/code&gt; 等核心实体&lt;/p&gt;
+&lt;h3&gt;&lt;code&gt;pi-coding-agent&lt;/code&gt;(CLI 应用)&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;pi-ai = 大脑接口（LLM 能力）&lt;/strong&gt;
+&lt;strong&gt;pi-agent-core = Agent 引擎（循环、状态、消息、工具编排）&lt;/strong&gt;
+&lt;strong&gt;pi-coding-agent = 一个具体产品形态（像 Claude Code / Cursor CLI）&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;                         User
+                          |
+                          |
+                    pi-coding-agent
+                    (CLI/TUI 产品层)
+                          |
+        +-----------------+----------------+
+        |                                  |
+        |                                  |
+  Session Management                 Interactive UI
+        |                                  |
+        |
+        v
++--------------------------------+
+|        pi-agent-core            |
+|                                |
+|  Agent Loop                    |
+|                                |
+|  1. Receive message            |
+|  2. Build context              |
+|  3. Call LLM                   |
+|  4. Execute tools              |
+|  5. Update state               |
+|  6. Repeat                     |
++--------------------------------+
+              |
+              |
+              |
+       +------+------+
+       |             |
+       v             v
+
+   pi-ai          Tools
+   LLM Layer      filesystem
+                  bash
+                  edit
+                  browser
+                  ...
+
+
+       |
+       v
+
+ OpenAI
+ Anthropic
+ Gemini
+ Bedrock
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;pi-ai 负责：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;provider 管理&lt;/li&gt;
+&lt;li&gt;API 调用&lt;/li&gt;
+&lt;li&gt;streaming&lt;/li&gt;
+&lt;li&gt;token&lt;/li&gt;
+&lt;li&gt;model catalog&lt;/li&gt;
+&lt;li&gt;OAuth&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;pi-agent-core 负责&lt;/p&gt;
+&lt;p&gt;agent loop&lt;/p&gt;
+&lt;p&gt;思考：我可以把智能工厂和finwork的对接工程发包成sdk给大家，&lt;/p&gt;
+&lt;p&gt;比如说可以把他们封装成类似pi-ai的东西&lt;/p&gt;
+&lt;p&gt;pi-ai里面涉及到的核心概念&lt;/p&gt;
+&lt;p&gt;1.compat--对不同模型的备用处理方案，默认使用openAi的处理方式，其他的定制化方案都叫compat&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;&lt;/th&gt;
+&lt;th&gt;&lt;code&gt;compat.ts&lt;/code&gt;&lt;/th&gt;
+&lt;th&gt;&lt;code&gt;model.compat&lt;/code&gt; / &lt;code&gt;getCompat()&lt;/code&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;层级&lt;/td&gt;
+&lt;td&gt;包级别入口模块&lt;/td&gt;
+&lt;td&gt;单个 &lt;code&gt;Model&lt;/code&gt; 对象上的字段&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;作用&lt;/td&gt;
+&lt;td&gt;保留旧版全局 &lt;code&gt;stream()&lt;/code&gt;/&lt;code&gt;getModel()&lt;/code&gt; 等 API,供迁移期使用&lt;/td&gt;
+&lt;td&gt;描述某个具体模型/端点在协议细节上的差异（字段名、是否支持某参数等）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;生命周期&lt;/td&gt;
+&lt;td&gt;临时,迁移完成后删除 compat.ts:7-10&lt;/td&gt;
+&lt;td&gt;长期存在,是 &lt;code&gt;Model&lt;/code&gt; 类型的正式设计 types.ts:778-787&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;谁在用&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;pi-coding-agent&lt;/code&gt; 的旧代码路径、扩展加载器&lt;/td&gt;
+&lt;td&gt;每个 API 实现内部（&lt;code&gt;openai-completions.ts&lt;/code&gt; 等）在构造请求参数时使用&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;典型例子&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;import ... from &quot;@earendil-works/pi-ai/compat&quot;&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;model.compat?.sup&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;文件/概念&lt;/th&gt;
+&lt;th&gt;目的&lt;/th&gt;
+&lt;th&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;packages/agent/docs/models.md&lt;/code&gt; 全文&lt;/td&gt;
+&lt;td&gt;理解整体设计意图和分层原则&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;packages/ai/src/models.ts&lt;/code&gt; (&lt;code&gt;Provider&lt;/code&gt;、&lt;code&gt;Models&lt;/code&gt;、&lt;code&gt;createModels&lt;/code&gt;、&lt;code&gt;createProvider&lt;/code&gt;)&lt;/td&gt;
+&lt;td&gt;核心运行时接口与工厂函数&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;packages/ai/src/api/*&lt;/code&gt; 任选一个简单实现(如 openai-completions)&lt;/td&gt;
+&lt;td&gt;了解 API 实现层如何对接真实 SDK&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;packages/ai/src/providers/*&lt;/code&gt; 任选一个(如 openrouter,复用共享 API)&lt;/td&gt;
+&lt;td&gt;了解 provider 工厂怎么组装 &lt;code&gt;createProvider&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;5&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;packages/ai/src/providers/all.ts&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;了解聚合入口/heavy entrypoint 的设计&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;6&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;packages/ai/README.md&lt;/code&gt; &quot;Development&quot; 一节&lt;/td&gt;
+&lt;td&gt;按 checklist 亲手加一个新 provider,验证理解&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;code&gt;models.ts&lt;/code&gt;(Models 运行时)、&lt;code&gt;compat.ts&lt;/code&gt;(兼容层)、&lt;code&gt;auth/&lt;/code&gt;(认证)、&lt;code&gt;api/&lt;/code&gt;(各 provider 的 API 实现)、&lt;code&gt;providers/&lt;/code&gt;(具体 provider 工厂 + 生成的 catalog)&lt;/p&gt;
+&lt;p&gt;核心运行时 Models/createProvider、具体 provider 工厂如何组装、API 实现层的懒加载机制、faux 测试 provider,以及上层 pi-agent-core 和 pi-coding-agent 如何消费这套 API&lt;/p&gt;
+&lt;p&gt;PI里面写得好的函数&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;/**
+ * Stop waiting for an operation when its signal aborts while continuing to
+ * observe the abandoned promise so a later rejection is always handled.
+ */
+export function raceWithAbortSignal&amp;lt;T&amp;gt;(operation: Promise&amp;lt;T&amp;gt;, signal: AbortSignal): Promise&amp;lt;T&amp;gt; {
+	if (signal.aborted) {
+		void operation.catch(() =&amp;gt; {});
+		return Promise.reject(abortReason(signal));
+	}
+
+	return new Promise&amp;lt;T&amp;gt;((resolve, reject) =&amp;gt; {
+		let settled = false;
+		const cleanup = () =&amp;gt; signal.removeEventListener(&quot;abort&quot;, onAbort);
+		const onAbort = () =&amp;gt; {
+			if (settled) return;
+			settled = true;
+			cleanup();
+			reject(abortReason(signal));
+		};
+
+		signal.addEventListener(&quot;abort&quot;, onAbort, { once: true });
+		void operation.then(
+			(value) =&amp;gt; {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				resolve(value);
+			},
+			(error: unknown) =&amp;gt; {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				reject(error);
+			},
+		);
+		if (signal.aborted) onAbort();
+	});
+}
+&lt;/code&gt;&lt;/pre&gt;
+</content:encoded><category>AI基建</category><author>Yuer</author></item><item><title>初探React</title><link>https://cathlee.github.io/posts/react/</link><guid isPermaLink="true">https://cathlee.github.io/posts/react/</guid><pubDate>Mon, 05 May 2025 00:00:00 GMT</pubDate><content:encoded>&lt;h3&gt;什么是render&lt;/h3&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;rendering的定义：react是如何基于当前的props和state进行ui渲染的&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;render过程一览：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;从fiber树的节点root，到子节点child，进行遍历，寻找被标记上需要更新的节点&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;对于每一个被打上标记待更新的节点，会通过如下的过程去执行更新节点的所需要的前置信息计算&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;For each flagged component, React will call either &lt;code&gt;FunctionComponent(props)&lt;/code&gt; (for function components), or &lt;code&gt;classComponentInstance.render()&lt;/code&gt; (for class components) , and save the render output for the next steps of the render pass。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;在这里，我们得知，react的render阶段，主要是在收集flagged被打上标签的节点，然后对他们执行render()操作（ps：函数式组件使用 &lt;code&gt;FunctionComponent(props)&lt;/code&gt;，类组件使用&lt;code&gt;classComponentInstance.render()&lt;/code&gt;），收集render()操作的产物，以便于后续更新执行diff计算&lt;/p&gt;
+&lt;p&gt;如下，便是这一过程的代码示例：&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;pre&gt;&lt;code&gt;// This JSX syntax:
+// 当我们使用函数式创建组件时
+return &amp;lt;MyComponent a={42} b=&quot;testing&quot;&amp;gt;Text here&amp;lt;/MyComponent&amp;gt;
+
+// is converted to this call:
+// 组件会通过createElement()生成描述组件的UI-value形式的react节点,即如下行代码所示
+return React.createElement(MyComponent, {a: 42, b: &quot;testing&quot;}, &quot;Text Here&quot;)
+
+// and that becomes this element object:
+{type: MyComponent, props: {a: 42, b: &quot;testing&quot;}, children: [&quot;Text Here&quot;]}
+
+// And internally, React calls the actual function to render it:
+// 使用`FunctionComponent(props)`
+// 在render phase的最后阶段，会调用render()，生成render phase操作的产物以便于后续commit phase进行diff更新
+// 这一产物也是一种UI-value的对象，并不是一种的dom节点
+let elements = MyComponent({...props, children})
+
+// For &quot;host components&quot; like HTML:
+// 对于内置的html标签来说就是也是类似的过程
+return &amp;lt;button onClick={() =&amp;gt; {}}&amp;gt;Click Me&amp;lt;/button&amp;gt;
+// becomes
+React.createElement(&quot;button&quot;, {onClick}, &quot;Click Me&quot;)
+// and finally:
+{type: &quot;button&quot;, props: {onClick}, children: [&quot;Click me&quot;]}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;等到react收集完当前组件树所有待更新节点的render()产物后（这一产物也被叫做visual dom），会执行水合操作&lt;a href=&quot;https://legacy.reactjs.org/docs/reconciliation.html&quot;&gt;reconciliation&lt;/a&gt;.去进行新旧组件树节点的差异比对，等到收集完所有差异后，进行一次性同步更新真实dom的操作。&lt;/p&gt;
+&lt;h4&gt;render的产物不是dom&lt;/h4&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Note:&lt;/strong&gt; The React team has downplayed the term &quot;virtual DOM&quot; in recent years. &lt;a href=&quot;https://twitter.com/dan_abramov/status/1066328666341294080?lang=en&quot;&gt;Dan Abramov said&lt;/a&gt;:&lt;/p&gt;
+&lt;p&gt;I wish we could retire the term “virtual DOM”. It made sense in 2013 because otherwise people assumed React creates DOM nodes on every render. But people rarely assume this today. “Virtual DOM” sounds like a workaround for some DOM issue. But that’s not what React is.
+React is “value UI”. Its core principle is that UI is a value, just like a string or an array. You can keep it in a variable, pass it around, use JavaScript control flow with it, and so on. That expressiveness is the point — not some diffing to avoid applying changes to the DOM.
+It doesn’t even always represent the DOM, for example &lt;code&gt;&amp;lt;Message recipientId={10} /&amp;gt;&lt;/code&gt; is not DOM. Conceptually it represents lazy function calls: &lt;code&gt;Message.bind(null, { recipientId: 10 })&lt;/code&gt;.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;这里主要是想说，diff的水合过程并不真的完完全全就是新建虚拟dom与旧的真实的dom进行比对的过程，react是一个值驱动ui变化的框架，本质上所有diff过程中用到的产物都是一种&lt;code&gt;UI-value&lt;/code&gt;形式的对象，可以是string或者是array等等js的基本类型对象，而不仅仅只是dom而已。本质上react只是为了更好的进行值比对，驱动视图变化，而不是为了创建新dom，替换旧dom。就像上述代码这样：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;{type: MyComponent, props: {a: 42, b: &quot;testing&quot;}, children: [&quot;Text Here&quot;]}
+
+// And internally, React calls the actual function to render it:
+// 使用`FunctionComponent(props)`
+// 在render phase的最后阶段，会调用render()，生成render phase操作的产物以便于后续commit phase进行diff更新
+// 这一产物也是一种UI-value的对象，并不是一种的dom节点
+let elements = MyComponent({...props, children})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;em&gt;It doesn’t even always represent the DOM, for example&lt;/em&gt; &lt;code&gt;&amp;lt;Message recipientId={10} /&amp;gt;&lt;/code&gt; &lt;em&gt;is not DOM. Conceptually it represents lazy function calls:&lt;/em&gt; &lt;code&gt;Message.bind(null, { recipientId: 10 })&lt;/code&gt;&lt;em&gt;.&lt;/em&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;这里也是一样的意思&lt;code&gt;&amp;lt;Message recipientId={10} /&amp;gt;&lt;/code&gt;并不是一个真实dom，而只是一个bind函数回调&lt;code&gt;Message.bind(null, { recipientId: 10 })&lt;/code&gt;&lt;em&gt;.&lt;/em&gt;&lt;/p&gt;
+&lt;h3&gt;render和commit阶段&lt;/h3&gt;
+&lt;p&gt;整个react作业的过程分为两个阶段&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;render：渲染组件，收集待更新节点的相关信息，形成渲染产物&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;commit：将render阶段收集到的信息执行到真实dom上&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;After React has updated the DOM in the commit phase, it updates all refs accordingly to point to the requested DOM nodes and component instances. It then synchronously runs the &lt;code&gt;componentDidMount&lt;/code&gt; and &lt;code&gt;componentDidUpdate&lt;/code&gt; class lifecycle methods, and the &lt;code&gt;useLayoutEffect&lt;/code&gt; hooks.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;执行完dom更新后，所有的component实例和refs绑定的对象都会被更新，之后便会开始执行&lt;code&gt;componentDidMount&lt;/code&gt; 、和&lt;code&gt;componentDidUpdate&lt;/code&gt;生命周期函数，以及&lt;code&gt;useLayoutEffect&lt;/code&gt;钩子函数&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;React then sets a short timeout, and when it expires, runs all the &lt;code&gt;useEffect&lt;/code&gt; hooks. This step is also known as the &quot;Passive Effects&quot; phase.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;之后才会进行短暂的延迟更新，叫做&lt;code&gt;Passive Effects&lt;/code&gt;阶段，去执行所有的useEffect钩子函数。值得一提的是，在react18，引入了useTransition，能够在render phase 阶段去暂停render，去获取浏览器相关数据，然后再执行render。所有这里引入的概念就是“react中的rendering 概念并不是只是用于渲染虚拟dom的阶段，来更新dom而已，一些未存在显性页面变化的操作背后，也可能在执行rendering”&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;React是如何处理Render的&lt;/h3&gt;
+&lt;p&gt;执行re-render的方法如下：&lt;/p&gt;
+&lt;p&gt;After the initial render has completed, there are a few different ways to tell React to queue a re-render:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Function components:
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;useState&lt;/code&gt; setters&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;useReducer&lt;/code&gt; dispatches&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;Class components:
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;this.setState()&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;this.forceUpdate()&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;Other:
+&lt;ul&gt;
+&lt;li&gt;Calling the ReactDOM top-level &lt;code&gt;render(&amp;lt;App&amp;gt;)&lt;/code&gt; method again (which is equivalent to calling &lt;code&gt;forceUpdate()&lt;/code&gt; on the root component)&lt;/li&gt;
+&lt;li&gt;Updates triggered from the new &lt;code&gt;useSyncExternalStore&lt;/code&gt; hook&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Note that function components don&apos;t have a &lt;code&gt;forceUpdate&lt;/code&gt; method, but you can get the same behavior by using a &lt;code&gt;useReducer&lt;/code&gt; hook that always increments a counter:&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const [, forceRender] = useReducer(c =&amp;gt; c + 1, 0)
+&lt;/code&gt;&lt;/pre&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Rendering a component will, by default, cause *all* components inside of it to be rendered too!&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Also, another key point:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;In normal rendering, React does *not* care whether &quot;props changed&quot; - it will render child components unconditionally just because the parent rendered!&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;This means that calling &lt;code&gt;setState()&lt;/code&gt; in your root &lt;code&gt;&amp;lt;App&amp;gt;&lt;/code&gt; component, with no other changes altering the behavior, &lt;em&gt;will&lt;/em&gt; cause React to re-render every single component in the component tree. After all, one of the original sales pitches for React was &lt;a href=&quot;https://www.slideshare.net/floydophone/react-preso-v2&quot;&gt;&quot;act like we&apos;re redrawing the entire app on every update&quot;&lt;/a&gt;.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;react组件渲染的逻辑就是父组件发生改变，所有子组件跟着一起re-render&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Now, it&apos;s very likely that most of the components in the tree will return the exact same render output as last time, and therefore React won&apos;t need to make any changes to the DOM. &lt;em&gt;But&lt;/em&gt;, React will still have to do the work of asking components to render themselves and diffing the render output. Both of those take time and effort.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;哪怕是没变更的节点，也会对props的变量进行引用值地址的更新，执行render，同时也会也要进行diff比对询问是否需要被打上标签，如&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;const MemoizedChildComponent = React.memo(ChildComponent)
+
+function ParentComponent() {
+  const onClick = () =&amp;gt; {
+    console.log(&apos;Button clicked&apos;)
+  }
+
+  const data = { a: 1, b: 2 }
+
+  return &amp;lt;MemoizedChildComponent onClick={onClick} data={data} /&amp;gt;
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;即使childcomponent已经被memo，但是每次parentComponent变更时，仍然会重新渲染MemoizedChildComponent，因为即使函数内容相同,它在每次渲染时都是一个新的函数引用。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Similarly, note that rendering &lt;code&gt;&amp;lt;MemoizedChild&amp;gt;&amp;lt;OtherComponent /&amp;gt;&amp;lt;/MemoizedChild&amp;gt;&lt;/code&gt; will &lt;em&gt;also&lt;/em&gt; force the child to always render, because &lt;code&gt;props.children&lt;/code&gt; is always a new reference.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;Fiber架构&lt;/h3&gt;
+&lt;h4&gt;Hooks must be called on the top level&lt;/h4&gt;
+&lt;p&gt;hook本质上只是一个array，这里介绍了原理，https://www.swyx.io/hooks#getting-closure-on-react-hooks，useState本质上就是一个闭包（closures），然后hooks设计成数组形式，便于组件逐步执行hook。每个hook都有自己特定的index和对应的值。同时这也是为什么&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;This is why Hooks must be called on the top level of our components.&lt;/strong&gt; If we want to run an effect conditionally, we can put that condition &lt;em&gt;inside&lt;/em&gt; our Hook:&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;https://legacy.reactjs.org/docs/hooks-rules.html#explanation&lt;/p&gt;
+&lt;p&gt;比如说if条件内的useEffect被skipped掉了话，但是原本componetInstance组件实例作用域内的hookArray的hookIndex还是保持原来的样子，这样就会导致后续hook的index找不到对应的数据，进一步报错，不执行后续的hook了&lt;/p&gt;
+&lt;h3&gt;优化Render的方式&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;React.memo()&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://react.dev/reference/react/Component#shouldcomponentupdate&quot;&gt;&lt;code&gt;React.Component.shouldComponentUpdate&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://react.dev/reference/react/PureComponent&quot;&gt;&lt;code&gt;React.PureComponent&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;blockquote&gt;
+&lt;p&gt;All of these approaches use a comparison technique called &lt;strong&gt;&quot;shallow equality&quot;&lt;/strong&gt;. This means checking every individual field in two different objects, and seeing if any of the &lt;em&gt;contents&lt;/em&gt; of the objects are a different value. In other words, &lt;code&gt;obj1.a === obj2.a &amp;amp;&amp;amp; obj1.b === obj2.b &amp;amp;&amp;amp; ........&lt;/code&gt;. This is typically a fast process, because &lt;code&gt;===&lt;/code&gt; comparisons are very simple for the JS engine to do. So, these three approaches do the equivalent of &lt;code&gt;const shouldRender = !shallowEqual(newProps, prevProps)&lt;/code&gt;.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;上述几种优化方式都是浅比较。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If you include &lt;code&gt;props.children&lt;/code&gt; in your output, that element is the same if this component does a state update&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre&gt;&lt;code&gt;// The `props.children` content won&apos;t re-render if we update state
+function SomeProvider({ children }) {
+  const [counter, setCounter] = useState(0)
+
+  return (
+    &amp;lt;div&amp;gt;
+      &amp;lt;button onClick={() =&amp;gt; setCounter(counter + 1)}&amp;gt;
+        Count:
+        {counter}
+      &amp;lt;/button&amp;gt;
+      &amp;lt;OtherChildComponent /&amp;gt;
+      {children}
+    &amp;lt;/div&amp;gt;
+  )
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;ul&gt;
+&lt;li&gt;If you wrap some elements with &lt;code&gt;useMemo()&lt;/code&gt;, those will stay the same until the dependencies change&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre&gt;&lt;code&gt;function OptimizedParent() {
+  const [counter1, setCounter1] = useState(0)
+  const [counter2, setCounter2] = useState(0)
+
+  const memoizedElement = useMemo(() =&amp;gt; {
+    // This element stays the same reference if counter 2 is updated,
+    // so it won&apos;t re-render unless counter 1 changes
+    return &amp;lt;ExpensiveChildComponent /&amp;gt;
+  }, [counter1])
+
+  return (
+    &amp;lt;div&amp;gt;
+      &amp;lt;button onClick={() =&amp;gt; setCounter1(counter1 + 1)}&amp;gt;
+        Counter 1:
+        {&apos; &apos;}
+        {counter1}
+      &amp;lt;/button&amp;gt;
+      &amp;lt;button onClick={() =&amp;gt; setCounter1(counter2 + 1)}&amp;gt;
+        Counter 2:
+        {&apos; &apos;}
+        {counter2}
+      &amp;lt;/button&amp;gt;
+      {memoizedElement}
+    &amp;lt;/div&amp;gt;
+  )
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;blockquote&gt;
+&lt;p&gt;For all of these techniques, &lt;strong&gt;skipping rendering a component means React will also skip rendering that entire subtree&lt;/strong&gt;, because it&apos;s effectively putting a stop sign up to halt the default &quot;render children recursively&quot; behavior.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;当前组件的render被skipped之后，所有的子节点的render也会被skipped。&lt;/p&gt;
+&lt;h3&gt;是否有必要Memoize Everything&lt;/h3&gt;
+&lt;h4&gt;为什么不使用react.memo去包裹所有组件&lt;/h4&gt;
+&lt;p&gt;根据博客中的这句话&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Also, while I don&apos;t have a specific link on it, it&apos;s possible that trying to apply this to all components by default might result in bugs due to cases where people are mutating data rather than updating it immutably.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;pre&gt;&lt;code&gt;function Parent() {
+  const [user, setUser] = React.useState({ name: &apos;Alice&apos; })
+
+  const updateUser = () =&amp;gt; {
+    // 直接修改 user 对象
+    user.name = &apos;Bob&apos; // 这是可变更新
+    setUser(user) // 这不会触发重新渲染
+  }
+
+  return (
+    &amp;lt;div&amp;gt;
+      &amp;lt;MyComponent user={user} /&amp;gt;
+      &amp;lt;button onClick={updateUser}&amp;gt;Change Name&amp;lt;/button&amp;gt;
+    &amp;lt;/div&amp;gt;
+  )
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;比如说我们使用mutating data的方式，去直接改变数据，这个时候，user引用并没有改变，memo并不会发现Mycomponent的变化。&lt;/p&gt;
+&lt;p&gt;但是如果我们使用immutable的方式，&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;function updateUser() {
+  setUser({ ...user, name: &apos;Bob&apos; }) // 这是不可变更新
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;这样memo才会发现Mycomponent的变化。进一步触发更新。&lt;/p&gt;
+&lt;p&gt;所以如果所有的组件都被包裹上memo，但是用户可能使用mutating data的方式去修改props，这个时候可能就不会导致被memo组件的更新。&lt;/p&gt;
+&lt;p&gt;所以组件性能优化的核心在于使用imutable的触发方式，同时更多的去memo props 是否更新来进一步判断是否需要重新渲染子组件，而不是默认对所有子组件进行memo，因为很有可能在某些地方采用了mutable的方式去变更数据，而此时的memo并不起作用。&lt;a href=&quot;https://react.dev/reference/react/memo#should-you-add-memo-everywhere&quot;&gt;react官方解释&lt;/a&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;When a context provider has a new value, *every* nested component that consumes that context will be forced to re-render&lt;/strong&gt;.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;That React Component Right Under Your Context Provider Should Probably Use &lt;code&gt;React.memo&lt;/code&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;react中，context.provider是通过比较值的引用地址来进一步判断消费他的组件是否需要变更。基本上使用了context的组件，建议都用memo包一层。&lt;/p&gt;
+</content:encoded><category>React</category><author>Yuer</author></item><item><title>关于Vapor Mode现阶段进度的理解总结</title><link>https://cathlee.github.io/posts/vue%20vapor/</link><guid isPermaLink="true">https://cathlee.github.io/posts/vue%20vapor/</guid><pubDate>Mon, 05 May 2025 00:00:00 GMT</pubDate><content:encoded>&lt;h1&gt;关于Vapor Mode现阶段进度的理解总结--第一章&lt;/h1&gt;
+&lt;p&gt;前言：本文在介绍vapor mode之前，第一章会先介绍明确最基本的三元论，是什么？为什么？怎么做？&lt;/p&gt;
+&lt;p&gt;未来几章会逐步介绍“怎么做”阶段，以及各个大佬的进度，待解决的问题，同时最后思考，我们能做些什么参与到相关开源项目中。&lt;/p&gt;
+&lt;h2&gt;Vapor Mode是什么&lt;/h2&gt;
+&lt;p&gt;熟悉vue的都知道，vue的渲染原理借助了一个核心概念--虚拟dom，有了虚拟dom我们在更新节点时能够实现对diff节点的收集和相关依赖的收集，以便于下一次的渲染速度能够得到提升。&lt;/p&gt;
+&lt;p&gt;于此同时虚拟dom本身并不是dom，我们在做节点渲染时&lt;strong&gt;往往需要去生成对应的虚拟节点，通过比对新旧dom树去替换待更新的dom&lt;/strong&gt;，这种过程从原理上来说是存在性能消耗的。&lt;/p&gt;
+&lt;p&gt;于是vue推出的vapor mode的想法，就是直接对dom进行操作，直接修改对应的节点，而不是生成虚拟dom去操作。&lt;/p&gt;
+&lt;h2&gt;为什么推出Vapor&lt;/h2&gt;
+&lt;p&gt;我把vue关于虚拟dom层面的优化理解的为三个阶段：全量更新虚拟dom-&amp;gt;增量查询待更新的虚拟dom-&amp;gt;不再使用虚拟dom（vapor mode）&lt;/p&gt;
+&lt;p&gt;前面全量更新-&amp;gt;增量更新的过程，其实主要就是vue2-&amp;gt;vue3过程中所做的工作。&lt;/p&gt;
+&lt;h3&gt;Vue2-&amp;gt;Vue3所做的优化&lt;/h3&gt;
+&lt;p&gt;在Vue 2中，组件的更新机制依赖于&lt;strong&gt;全量重新渲染组件树来识别和应用变更&lt;/strong&gt;。这意味着即使只有少数几个节点需要更新，Vue 2也会收集整个组件的依赖，重新生成整个组件的虚拟DOM树，并通过对比新旧虚拟DOM树来确定需要更新的具体部分。这个过程虽然简化了更新逻辑，但在处理大型或复杂组件树时可能会引入不必要的性能开销，&lt;strong&gt;因为它需要重新计算整个组件树，而不是只关注变化的部分&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;Vue 3通过引入编译时优化和更细粒度的响应式系统来解决这一问题。利用编译时的&lt;strong&gt;静态分析&lt;/strong&gt;，Vue 3能够预先确定组件模板中哪些部分可能会发生变化，从而在运行时精确地跟踪和更新这些变化的部分。这种增量更新机制显著提高了更新效率，因为&lt;strong&gt;它避免了对未更改节点的无谓计算和DOM操作。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;vue2过渡到vue3的实现方法之一：&lt;strong&gt;随着ES6的发展，Vue的响应式系统从Vue 2的基于Object.defineProperty的属性访问拦截，升级到Vue 3的基于Proxy的对象拦截。这个变化使得依赖收集和变更通知的机制从对单个属性的操作转变为可以直接作用于整个对象，提高了响应式系统的性能和灵活性。此外，Proxy的使用允许Vue 3将变更检测的粒度从属性级别提升到对象级别，从而简化了组件和数据更新的复杂度**&lt;/strong&gt;&lt;/p&gt;
+&lt;h4&gt;vue3中使用proxy劫持整个对象相较于object.defineProperty的优势是什么&lt;/h4&gt;
+&lt;ol&gt;
+&lt;li&gt;object.defineProperty 收集/触发依赖变更时，需要通过遍历对象的方式，收集getter/setter，然后在更新时查找出具体是哪个/哪些依赖存在变化，然后触发对象getter/setter进行增量或是全量的更新。同时面临对象的&lt;code&gt;push&lt;/code&gt;、&lt;code&gt;pop&lt;/code&gt;、&lt;code&gt;shift&lt;/code&gt;、&lt;code&gt;unshift&lt;/code&gt;、&lt;code&gt;splice&lt;/code&gt;、&lt;code&gt;sort&lt;/code&gt;和&lt;code&gt;reverse&lt;/code&gt;等一系列操作时，为了保持响应式，需要手动触发对象getter/setter&lt;/li&gt;
+&lt;li&gt;使用proxy收集/触发依赖变更时，无需遍历对象收集getter/setter，proxy的handler对象直接能够对对象的一系列操作进行劫持。在面临更多的对象的&lt;code&gt;push&lt;/code&gt;、&lt;code&gt;pop&lt;/code&gt;、&lt;code&gt;shift&lt;/code&gt;、&lt;code&gt;unshift&lt;/code&gt;、&lt;code&gt;splice&lt;/code&gt;、&lt;code&gt;sort&lt;/code&gt;和&lt;code&gt;reverse&lt;/code&gt;等操作时，无需手动触发对象的setter/setter&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h4&gt;Vue3的节点diff优化&lt;/h4&gt;
+&lt;p&gt;同时在vue3中，为了更好的优化渲染过程还会存在虚拟dom算法层面的优化，&lt;strong&gt;其中的一个比较核心的概念就是静态提升&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;vue2过渡到vue3的实现方法之二：&lt;strong&gt;Vue从v2中收集组件树的所有相关资源生成虚拟树的过程，过渡到v3中通过babel解析vue模版识别出ast抽象语法树中的静态节点和动态节点的方式，通过复用静态节点，重点关注动态节点的变更的方式来重建虚拟树。从而实现编译时过程中diff性能的优化。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;所谓静态提升就是--这一识别并预处理那些在组件的多次渲染中不会改变的静态内容，将它们在编译时期提前转换为常量，以减少在组件每次更新时对这些静态内容的重复计算和渲染&lt;/p&gt;
+&lt;p&gt;静态提升涉及到的实施过程如下：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;解析模板（compiler-core）：&lt;/strong&gt; 将Vue模板（一个HTML-like的字符串）解析成AST。这一步涉及词法分析（tokenization）和语法分析（parsing），将模板字符串转换成AST节点。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;优化AST（compiler-core）：&lt;/strong&gt; 遍历AST，标记静态节点和静态根节点。这一步是优化的关键，它识别出哪些节点在组件的多次渲染中不会改变。静态节点可以在编译时直接转换成渲染函数中的常量，避免在每次渲染时的重新计算。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;代码生成（code-generation）：&lt;/strong&gt; 将优化后的AST转换成可执行的渲染函数代码。这一步涉及将AST节点转换为JavaScript代码，这些代码在执行时能够生成虚拟DOM树。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h4&gt;V3编译时优化的细节&lt;/h4&gt;
+&lt;p&gt;在编译时优化过程中，v3新增了&lt;strong&gt;block,fragment&lt;/strong&gt;这两个概念来辅助静态提升。&lt;/p&gt;
+&lt;p&gt;Block:包含静态节点和动态节点的vnode，编译阶段，会识别出静态节点；在组件更新时，只需要识别动态的节点的变化。在后续更新中复用静态节点，追踪动态节点重建虚拟树，实现对编译时的性能提升。&lt;/p&gt;
+&lt;p&gt;在编译时的过程中，AST的一些静态的常量如标签（&amp;lt;p&amp;gt;），表达式符号（=）等会被识别为静态资源，&lt;/p&gt;
+&lt;p&gt;而vue等一些内置指令会被识别为如&lt;strong&gt;不同类型的block-动态节点&lt;/strong&gt;：v-bind、动态文本：slot、动态列表 v-for、条件渲染block：v-if 等&lt;/p&gt;
+&lt;p&gt;这些具体细节实现可能得自己看看源码。&lt;/p&gt;
+&lt;p&gt;fragment：为了方便开发者无需使用新增dom节点（&amp;lt;div&amp;gt;）来包裹对应的组件，，这样能减少dom树的构建，进而减少渲染过程中的压力&lt;/p&gt;
+&lt;h3&gt;V3-&amp;gt;vapor mode的变化来源&lt;/h3&gt;
+&lt;p&gt;由于虚拟树本身创建本身也会消耗性能，v3接下来的想法就是受solid.js的dom更新的启发-即直接更新dom，而无需生成对应的虚拟树，推出了Vapor Mode，具体solid具体实施细节可能需要接下来继续探索。接下来我主要是探讨一下我目前所知的Vapor相关进展。&lt;/p&gt;
+&lt;h2&gt;Vapor Mode怎么做&lt;/h2&gt;
+&lt;p&gt;在现阶段的Vapor Mode中，我主要关注的是Vapor模式中Render阶段的改进细节：亦即Vue中compiler阶段，做了什么优化。&lt;/p&gt;
+&lt;p&gt;在V3过程中，我们会先生成虚拟dom，再处理完静态提升后，对待渲染的节点进行重建，同时对新旧dom树进行比对并替换，最终增量渲染dom树&lt;/p&gt;
+&lt;p&gt;在vapor mode中，编译时的工作解析过程，仍然继续使用v3点ast和block进行相关重建，唯一不同的是，为了取代虚拟dom，vapor通过引入IR（intermediate representation）的方式优化虚拟dom节点的渲染。&lt;/p&gt;
+&lt;p&gt;在Vapor mode中，block和相关节点解析成特定的IR端代码，然后再通过codegen生成对应的render树代码，具体过程如下所示：&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;../../../public/images/posts/3A7F7245-6423-477C-A6CA-03FD2CF76AF7_1_105_c.jpeg&quot; alt=&quot;3A7F7245-6423-477C-A6CA-03FD2CF76AF7&quot; /&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;在编译时的parse阶段，对vue template（html-like的代码片段）进行解析成ast&lt;/li&gt;
+&lt;li&gt;在编译时的transform阶段，对ast进行静态节点和动态节点划分，生成特定的block代码块&lt;/li&gt;
+&lt;li&gt;针对composition api的节点，使用虚拟dom的方式，通过比对新旧虚拟dom，重建生成渲染树&lt;/li&gt;
+&lt;li&gt;针对vapor节点，通过识别特定标识生成IR代码块，直接根据IR代码块，将特定的dom进行全量替换。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Ps：针对vapor mode中 ，我最关注的是，ast-&amp;gt;Ir过程是如何实现的？&lt;/p&gt;
+&lt;p&gt;参考：&lt;/p&gt;
+&lt;p&gt;https://qiita.com/ubugeeei/items/73a2416fd46cfe6311a8&lt;/p&gt;
+&lt;p&gt;https://qiita.com/ubugeeei/items/b28a04a41348b6e49293&lt;/p&gt;
+&lt;p&gt;https://icarusgk.hashnode.dev/vue-3-vapor-mode&lt;/p&gt;
+&lt;h2&gt;&lt;/h2&gt;
+</content:encoded><category>Vue</category><author>Yuer</author></item></channel></rss>
