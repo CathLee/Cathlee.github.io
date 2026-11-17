@@ -68,7 +68,7 @@
   body.tts-on footer{padding-bottom:130px}
   body.tts-on #speak{border-color:var(--accent);color:var(--accent)}
   #tts button{min-width:38px}
-  #tts select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 6px;max-width:180px}
+  #tts select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 6px;max-width:210px}
   #tts label{display:flex;align-items:center;gap:5px;color:var(--muted);white-space:nowrap;cursor:pointer}
   #ttsMsg{flex-basis:100%;text-align:center;color:#c0392b;display:none}
   .tts-cur{background:color-mix(in srgb,var(--accent) 16%,transparent);box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 16%,transparent);border-radius:3px;transition:background .2s}
@@ -108,7 +108,7 @@
       <option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option>
       <option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2">2×</option>
     </select>
-    <select id="ttsVoice" title="Voice"><option value="">Auto voice</option></select>
+    <select id="ttsVoice" title="Voice for this page's language"><option value="">Auto voice</option></select>
     <label title="Keep reading into the next page when this one ends"><input id="ttsAuto" type="checkbox" checked> Continue to next page</label>
     <div id="ttsMsg"></div>
   </div>
@@ -335,60 +335,154 @@
     const noop = { halt(){}, close(){} };
     if (!synth || !window.SpeechSynthesisUtterance){ $('speak').style.display = 'none'; return noop; }
 
-    let queue = [], pos = 0, playing = false, session = 0, utter = null, voices = [];
+    let queue = [], pos = 0, playing = false, session = 0, utter = null, timer = 0;
+    let voices = [], multi = new Set(), modernApple = false, pageLang = '';
+    const bad = new Set();                                         // voices that failed to speak during this visit
     const SKIP = 'rt,rp,script,style,noscript,svg,math';
+    const count = (t, re) => (t.match(re) || []).length;
+    const isCJK = t => /[぀-ヿ㐀-鿿가-힯]/.test(t);
 
-    // Split the visible page into blocks (paragraphs, headings, list items…) in reading order.
+    // ---- text: page → blocks (paragraphs, headings, list items…) → sentence-sized chunks
     function blocks(){
-      const page = $('page'), map = new Map(), order = [];
+      const page = $('page'), out = [];
       page.querySelectorAll('.tts-block').forEach(e => e.classList.remove('tts-block'));
-      const w = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
+      const w = document.createTreeWalker(page, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+      let last = null;
       for (let n; (n = w.nextNode()); ){
-        if (!n.nodeValue.trim() || n.parentElement.closest(SKIP)) continue;
-        let el = n.parentElement;
+        if (n.nodeType === 1){ if (n.localName === 'br' && last) last.text += '\n'; continue; }   // a line break is a pause, not glue
+        if (!n.nodeValue.trim()){ if (last) last.text += ' '; continue; }                          // keep the space between inline tags
+        const pe = n.parentElement;
+        if (pe.closest(SKIP) || !pe.getClientRects().length) continue;                             // hidden text is not read
+        const sup = pe.closest('sup'), a = pe.closest('a');                                        // footnote markers are not read
+        if (sup && /^[\s\[(（【]*(\d{1,3}|[*†‡§])[\s\])）】]*$/.test(sup.textContent)) continue;
+        if (a && (/noteref/.test(a.getAttribute('epub:type') || '') || /^\s*[\[(（【]\s*\d{1,3}\s*[\])）】]\s*$/.test(a.textContent))) continue;
+        let el = pe;
         while (el !== page && /^(inline|contents|ruby)/.test(getComputedStyle(el).display)) el = el.parentElement;
-        if (!map.has(el)){ map.set(el, []); order.push(el); }
-        map.get(el).push(n.nodeValue);
+        if (!last || last.el !== el){ last = { el, text: '' }; out.push(last); if (el !== page) el.classList.add('tts-block'); }
+        last.text += n.nodeValue;
       }
-      return order.map(el => {
-        if (el !== page) el.classList.add('tts-block');
-        return { el, text: map.get(el).join('').replace(/\s+/g, ' ').trim() };
-      });
+      return out;
     }
-    // Short utterances: long ones get cut off in Chrome, and short ones make pause/resume precise.
-    function chunks(t){
-      const parts = t.match(/[^。！？!?；;.…]+[。！？!?；;.…]*["'”’」』）)\]]*\s*/g) || [t];
-      const out = []; let buf = '';
-      const push = s => { for (; s.length > 220; s = s.slice(220)) out.push(s.slice(0, 220)); return s; };
-      for (const p of parts){
-        if (buf && (buf + p).length > 200){ out.push(buf); buf = ''; }
-        buf = push(buf + p);
+    function sentences(s){
+      const out = []; let start = 0;
+      const re = /[。！？!?；;…]+["'”’」』）)\]]*\s*|\.+["'”’)\]]*(?:\s+|$)/g;        // "3.14" and "a.com" are not sentence ends
+      for (let m; (m = re.exec(s)); ){
+        if (m[0][0] === '.' && /(?:^|[\s(“"])(?:[A-Z]|Mr|Mrs|Ms|Dr|Prof|St|Jr|Sr|vs|etc|No|Fig|Vol|e\.g|i\.e)$/.test(s.slice(start, m.index))) continue;
+        const end = m.index + m[0].length;
+        out.push(s.slice(start, end)); start = end;
       }
-      if (buf.trim()) out.push(buf);
-      return out.map(s => s.trim()).filter(Boolean);
+      if (start < s.length) out.push(s.slice(start));
+      return out;
+    }
+    // About ten seconds of speech per chunk: long utterances get cut off in Chrome, and chunks
+    // always end at a sentence, a comma or a space — never in the middle of a word.
+    function chunks(t){
+      const out = [];
+      for (const line of t.split(/\n+/)){
+        const s = line.replace(/\s+/g, ' ').trim()
+          .replace(/([\u3000-\u30ff\u3400-\u9fff\uff00-\uffef])\s+(?=[\u3000-\u30ff\u3400-\u9fff\uff00-\uffef])/g, '$1');   // no stray pauses inside Chinese/Japanese text
+        let buf = '';
+        for (let p of sentences(s)){
+          const max = isCJK(buf + p) ? 50 : 170;
+          if (buf && (buf + p).length > max){ out.push(buf); buf = ''; }
+          while (p.length > max){
+            const head = p.slice(0, max);
+            let cut = Math.max(0, ...Array.from(head.matchAll(/[，,、：:—–]["'”’」』）)]*\s*/g), m => m.index + m[0].length));
+            if (cut < max * 0.4) cut = head.lastIndexOf(' ') + 1;
+            if (cut < max * 0.4) cut = max;
+            out.push(p.slice(0, cut)); p = p.slice(cut);
+          }
+          buf += p;
+        }
+        if (buf) out.push(buf);
+      }
+      return out.map(x => x.trim()).filter(x => /[\p{L}\p{N}]/u.test(x));     // drop "* * *" and other pure decoration
+    }
+
+    // ---- language: decided by the script of each chunk; the book's metadata only refines it
+    const norm = l => (l || '').replace(/_/g, '-');
+    const prim = l => norm(l).split('-')[0].toLowerCase();
+    const zhTag = l => /hant|tw/i.test(l) ? 'zh-TW' : /hk|mo|yue/i.test(l) ? 'zh-HK' : 'zh-CN';
+    const REGION = { en:'en-US', ja:'ja-JP', ko:'ko-KR', fr:'fr-FR', de:'de-DE', es:'es-ES', it:'it-IT', pt:'pt-BR', ru:'ru-RU', nl:'nl-NL', pl:'pl-PL', sv:'sv-SE', tr:'tr-TR', vi:'vi-VN', th:'th-TH' };
+    function fullTag(l){                                           // "zh" → "zh-CN", "en" → the reader's own kind of English
+      l = norm(l); const p = prim(l);
+      const mine = () => (navigator.languages || []).map(norm).find(x => prim(x) === p && x.includes('-')) || '';
+      if (p === 'zh' || p === 'cmn' || p === 'yue') return zhTag(l.includes('-') || p === 'yue' ? l : mine());
+      if (/^[a-z]{2,3}-[a-z]{2}$/i.test(l)) return l;
+      return mine() || REGION[p] || l || 'en-US';
+    }
+    function langOf(t){
+      const han = count(t, /[㐀-鿿]/g), kana = count(t, /[぀-ヿ]/g), hangul = count(t, /[가-힯]/g);
+      const cyr = count(t, /[Ѐ-ӿ]/g), words = count(t, /[A-Za-zÀ-ɏ]{2,}/g);
+      const book = prim(bookLang);
+      if ((kana >= 2 && kana * 6 >= han) || (book === 'ja' && han + kana > 0 && han + kana >= words)) return 'ja-JP';
+      if (hangul && hangul >= words) return 'ko-KR';
+      if (han && han >= words) return fullTag(book === 'zh' || book === 'yue' || book === 'cmn' ? bookLang : 'zh');
+      if (cyr && cyr >= words) return /^(ru|uk|bg|sr|be|kk|mk)$/.test(book) ? fullTag(bookLang) : 'ru-RU';
+      if (words) return !book || /^(zh|cmn|yue|ja|ko|ru|uk|bg|sr|be|kk|mk)$/.test(book) ? fullTag('en') : fullTag(bookLang);
+      return null;                                                 // only digits: read in the page's language
     }
     function build(){
       queue = [];
-      blocks().forEach(b => chunks(b.text).forEach(text => queue.push({ el: b.el, text })));
+      blocks().forEach(b => chunks(b.text).forEach(text => queue.push({ el: b.el, text, lang: langOf(text) })));
+      const tally = {};
+      queue.forEach(q => { if (q.lang) tally[q.lang] = (tally[q.lang] || 0) + q.text.length * (isCJK(q.text) ? 3 : 1); });
+      const top = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0] || fullTag(bookLang || navigator.language || 'en');
+      if (top !== pageLang){ pageLang = top; fillPicker(); }
     }
 
-    function langOf(t){
-      if (/[\u3040-\u30ff]/.test(t)) return 'ja-JP';
-      if (/[\uac00-\ud7af]/.test(t)) return 'ko-KR';
-      if (/[\u4e00-\u9fff]/.test(t)) return /^zh/i.test(bookLang) ? bookLang : 'zh-CN';
-      if (/[\u0400-\u04ff]/.test(t)) return /^(ru|uk|bg|sr|be|kk|mk)/i.test(bookLang) ? bookLang : 'ru-RU';
-      return bookLang && !/^(zh|ja|ko)/i.test(bookLang) ? bookLang : 'en-US';
+    // ---- voices: rank what this device offers instead of taking the first one in its list
+    const base = n => n.replace(/\s*[（(].*$/, '').trim();
+    const vtag = v => { const l = norm(v.lang); return /^(zh|cmn|yue)(-|$)/i.test(l) ? zhTag(l) : l; };
+    const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Pipe Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Deranged|Hysterical|Princess|Junior|Ralph|Fred|Kathy)$/i;
+    const ELOQUENCE = /^(Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley)$/i;
+    const KNOWN_GOOD = /^(Samantha|Alex|Ava|Allison|Susan|Tom|Evan|Nathan|Zoe|Joelle|Noelle|Daniel|Kate|Serena|Oliver|Karen|Lee|Moira|Tessa|Fiona|Rishi|Tingting|Ting-Ting|婷婷|Meijia|Mei-Jia|美佳|美嘉|Sinji|Sin-ji|善怡|Kyoko|Otoya|Yuna|Lili|Lilian|Yu-shu|Li-mu)$/i;
+    const FIRST_CHOICE = /Xiaoxiao|Aria|Jenny|Samantha|Tingting|婷婷|Google US English|Google 普通话/i;
+    function score(v, want){
+      if (bad.has(v.name)) return -1000;
+      const raw = norm(v.lang), tag = vtag(v), id = v.name + ' ' + (v.voiceURI || ''), b = base(v.name);
+      if (prim(tag) !== prim(want)) return -1000;
+      let s = 0;
+      if (tag.toLowerCase() === want.toLowerCase()) s += 50;
+      else if (prim(want) === 'zh') s += (tag === 'zh-HK' || want === 'zh-HK') ? -200 : 20;   // never Mandarin text in a Cantonese voice, or the reverse
+      else s += /-(US|GB)$/i.test(tag) ? 25 : 20;
+      if (/^[a-z]{2,3}-[a-z]{2}-\w/i.test(raw)) s -= 40;                                      // regional dialect voices (e.g. zh-CN-liaoning)
+      if (/natural|neural/i.test(id)) s += 40;                                                // Edge "Online (Natural)"
+      else if (/premium/i.test(id)) s += 32;
+      else if (/enhanced|siri/i.test(id)) s += 28;
+      else if (/^Google /.test(v.name)) s += 12;
+      if (NOVELTY.test(b) || (modernApple && /speech\.synthesis\.voice\./.test(v.voiceURI || ''))) s -= 90;   // Bells, Whisper, Zarvox…
+      else if (ELOQUENCE.test(b) || /eloquence/i.test(id) || multi.has(b)) s -= 60;                         // old robotic synthesizer
+      else if (KNOWN_GOOD.test(b)) s += 15;
+      if (/compact/i.test(id)) s -= 3;
+      if (FIRST_CHOICE.test(v.name)) s += 4;
+      if (v.default) s += 8;
+      return s;
+    }
+    const ranked = want => voices.map((v, i) => ({ v, i, s: score(v, want) })).filter(x => x.s > -900)
+                                 .sort((a, b) => b.s - a.s || a.i - b.i).map(x => x.v);
+    function voiceFor(lang){
+      const name = store.get('epub:voice:' + prim(lang));           // the reader's own choice, kept per language
+      return (name && voices.find(v => v.name === name && !bad.has(name) && prim(vtag(v)) === prim(lang))) || ranked(lang)[0] || null;
+    }
+    const label = v => v.name.replace(/^Microsoft /, '').replace(/ Online \(Natural\) - .*$/, ' (Natural)').replace(/ - .*$/, '');
+    function fillPicker(){
+      const sel = $('ttsVoice'), list = pageLang ? ranked(pageLang) : [];
+      const regions = new Set(list.map(vtag)).size > 1;
+      sel.length = 0;
+      const add = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; sel.appendChild(o); };
+      add('', list.length ? 'Auto · ' + label(list[0]) : 'Auto voice');
+      list.forEach(v => add(v.name, label(v) + (regions ? ' · ' + vtag(v) : '')));
+      const pick = store.get('epub:voice:' + prim(pageLang)) || '';
+      sel.value = list.some(v => v.name === pick) ? pick : '';
     }
     function loadVoices(){
-      voices = synth.getVoices();
-      const sel = $('ttsVoice'), keep = store.get('epub:voice') || '';
-      sel.length = 1;
-      voices.slice().sort((a, b) => a.lang.localeCompare(b.lang) || a.name.localeCompare(b.name)).forEach(v => {
-        const o = document.createElement('option');
-        o.value = v.name; o.textContent = v.lang + ' · ' + v.name.replace(/^(Microsoft|Google) /, '');
-        sel.appendChild(o);
-      });
-      sel.value = voices.some(v => v.name === keep) ? keep : '';
+      voices = synth.getVoices() || [];
+      const seen = {};                                              // the same name offered in many languages = a generic robotic synthesizer
+      voices.forEach(v => { const b = base(v.name); (seen[b] = seen[b] || new Set()).add(prim(v.lang)); });
+      multi = new Set(Object.keys(seen).filter(k => seen[k].size >= 4));
+      modernApple = voices.some(v => /com\.apple\.(voice\.|ttsbundle)/.test(v.voiceURI || ''));
+      fillPicker();
     }
     loadVoices();
     if (synth.addEventListener) synth.addEventListener('voiceschanged', loadVoices);
@@ -404,31 +498,34 @@
     function ui(){ $('ttsPlay').textContent = playing ? '❚❚' : '▶'; $('ttsPlay').title = playing ? 'Pause' : 'Play'; }
 
     function speak(){
-      const my = ++session;
-      synth.cancel();
-      if (pos >= queue.length) return pageDone(my);
-      const item = queue[pos];
+      const my = ++session; clearTimeout(timer);
+      if (pos >= queue.length){ if (synth.speaking || synth.pending) synth.cancel(); return pageDone(my); }
+      const item = queue[pos], lang = item.lang || pageLang, v = voiceFor(lang);
       const u = utter = new SpeechSynthesisUtterance(item.text);   // keep a reference so it isn't garbage-collected
-      const lang = langOf(item.text);
-      const picked = voices.find(v => v.name === $('ttsVoice').value);
-      if (picked){ u.voice = picked; u.lang = picked.lang; }
-      else {
-        u.lang = lang;
-        const pre = lang.slice(0, 2).toLowerCase();
-        const v = voices.find(v => v.lang.replace('_', '-').toLowerCase() === lang.toLowerCase() && v.localService)
-               || voices.find(v => v.lang.toLowerCase().startsWith(pre) && v.localService)
-               || voices.find(v => v.lang.toLowerCase().startsWith(pre));
-        if (v) u.voice = v;
-      }
-      u.rate = parseFloat($('ttsRate').value) || 1;
-      u.onend = () => { if (my === session && playing){ pos++; speak(); } };
+      if (v){ u.voice = v; u.lang = norm(v.lang); } else u.lang = lang;
+      const rate = parseFloat($('ttsRate').value) || 1;
+      u.rate = rate; u.pitch = 1; u.volume = 1;
+      let started = false;
+      const next = () => { if (my === session && playing){ clearTimeout(timer); pos++; speak(); } };
+      const swap = () => { if (my === session && playing){ clearTimeout(timer); bad.add(v.name); fillPicker(); speak(); } };   // try the next-best voice
+      u.onstart = () => {
+        started = true; clearTimeout(timer);
+        timer = setTimeout(next, (item.text.length * (isCJK(item.text) ? 0.5 : 0.14) / rate + 10) * 1000);   // never hang on a stuck utterance
+      };
+      u.onend = next;
       u.onerror = e => {
         if (my !== session || e.error === 'interrupted' || e.error === 'canceled') return;
-        if (e.error === 'not-allowed'){ playing = false; ui(); msg('Tap ▶ to start reading.'); return; }
-        pos++; speak();                                            // skip a chunk the voice can't read
+        if (e.error === 'not-allowed'){ clearTimeout(timer); playing = false; ui(); msg('Tap ▶ to start reading.'); return; }
+        if (v && !started) swap(); else next();
       };
       mark(item.el); msg('');
-      setTimeout(() => { if (my === session && playing) synth.speak(u); }, 60);   // let cancel() settle first
+      const go = () => {
+        if (my !== session || !playing) return;
+        synth.speak(u);
+        if (v && !v.localService) timer = setTimeout(() => { if (!started) swap(); }, 6000);                 // online voice that never answers
+      };
+      // Only interrupt when something is actually playing; going sentence to sentence needs no gap.
+      if (synth.speaking || synth.pending){ synth.cancel(); setTimeout(go, 80); } else go();
     }
     async function pageDone(my){
       if ($('ttsAuto').checked && cur < spine.length - 1){
@@ -447,7 +544,7 @@
       if (!queue.length && !($('ttsAuto').checked && cur < spine.length - 1)){ msg('There is no text on this page to read.'); return; }
       playing = true; ui(); speak();
     }
-    function pause(){ playing = false; session++; synth.cancel(); ui(); }      // resumes from the same sentence
+    function pause(){ playing = false; session++; clearTimeout(timer); synth.cancel(); ui(); }      // resumes from the same sentence
     function halt(){ pause(); pos = 0; queue = []; mark(null); msg(''); }      // page changed
     function close(){ halt(); document.body.classList.remove('tts-on'); }
 
@@ -460,7 +557,7 @@
     $('ttsRate').value = store.get('epub:rate') || '1';
     if (!$('ttsRate').value) $('ttsRate').value = '1';
     $('ttsRate').onchange = () => { store.set('epub:rate', $('ttsRate').value); if (playing) speak(); };
-    $('ttsVoice').onchange = () => { store.set('epub:voice', $('ttsVoice').value); if (playing) speak(); };
+    $('ttsVoice').onchange = () => { store.set('epub:voice:' + prim(pageLang), $('ttsVoice').value); fillPicker(); if (playing) speak(); };
     $('ttsAuto').checked = store.get('epub:auto') !== '0';
     $('ttsAuto').onchange = () => store.set('epub:auto', $('ttsAuto').checked ? '1' : '0');
 
