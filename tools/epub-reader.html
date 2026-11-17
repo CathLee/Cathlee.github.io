@@ -60,6 +60,19 @@
   footer{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:720px;margin:0 auto;padding:12px 24px 40px;color:var(--muted);font-size:13px}
   .bar{height:3px;background:var(--line);position:sticky;top:0}
   .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+
+  /* Read aloud */
+  #tts{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:10;display:none;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
+    width:max-content;max-width:calc(100vw - 20px);padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.18);font-size:13px}
+  body.tts-on #tts{display:flex}
+  body.tts-on footer{padding-bottom:130px}
+  body.tts-on #speak{border-color:var(--accent);color:var(--accent)}
+  #tts button{min-width:38px}
+  #tts select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 6px;max-width:180px}
+  #tts label{display:flex;align-items:center;gap:5px;color:var(--muted);white-space:nowrap;cursor:pointer}
+  #ttsMsg{flex-basis:100%;text-align:center;color:#c0392b;display:none}
+  .tts-cur{background:color-mix(in srgb,var(--accent) 16%,transparent);box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 16%,transparent);border-radius:3px;transition:background .2s}
+  body.tts-on #page .tts-block{cursor:pointer}
 </style>
 </head>
 <body>
@@ -67,7 +80,7 @@
 <section id="drop">
   <div class="card" id="card">
     <h1>EPUB Reader</h1>
-    <p>Open an EPUB from your device and read it here page by page, with a table of contents, adjustable text size and a dark mode.</p>
+    <p>Open an EPUB from your device and read it here page by page, with a table of contents, adjustable text size, a dark mode and read‑aloud.</p>
     <label class="pick">Choose an EPUB file<input id="file" type="file" accept=".epub,application/epub+zip" hidden></label>
     <p class="note">…or drop the file onto this box. The book is read only in your browser. Nothing is uploaded or saved anywhere.</p>
     <div id="err"></div>
@@ -78,6 +91,7 @@
   <header>
     <button id="tocBtn" title="Contents">☰</button>
     <div class="title"><span id="bookTitle"></span><small id="chapTitle"></small></div>
+    <button id="speak" title="Read this page aloud">🔊</button>
     <button id="smaller" title="Smaller text">A−</button>
     <button id="bigger" title="Larger text">A+</button>
     <button id="theme" title="Dark / light">◐</button>
@@ -87,6 +101,17 @@
   <nav id="toc"><h2>Contents</h2><div id="tocList"></div></nav>
   <div id="scrim"></div>
   <main><article id="page"></article></main>
+  <div id="tts" role="group" aria-label="Read aloud">
+    <button id="ttsPlay" title="Play / pause">▶</button>
+    <button id="ttsStop" title="Stop and close">■</button>
+    <select id="ttsRate" title="Speed">
+      <option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option>
+      <option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2">2×</option>
+    </select>
+    <select id="ttsVoice" title="Voice"><option value="">Auto voice</option></select>
+    <label title="Keep reading into the next page when this one ends"><input id="ttsAuto" type="checkbox" checked> Continue to next page</label>
+    <div id="ttsMsg"></div>
+  </div>
   <footer>
     <button id="prev">← Previous</button>
     <span id="count"></span>
@@ -102,7 +127,7 @@
     set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} }
   };
 
-  let zip, spine = [], cur = 0, blobCache = {}, bookKey = '', tocItems = [];
+  let zip, spine = [], cur = 0, blobCache = {}, bookKey = '', tocItems = [], bookLang = '';
 
   // ---------- path helpers ----------
   const dirOf = p => p.includes('/') ? p.slice(0, p.lastIndexOf('/') + 1) : '';
@@ -156,6 +181,7 @@
       $('bookTitle').textContent = title.trim();
       document.title = title.trim() + ' · EPUB Reader';
       bookKey = 'epubpos:' + title.trim();
+      bookLang = ((byTag(opf, 'language')[0] || {}).textContent || '').trim();
 
       await buildToc(opf, manifest, opfPath);
       if (author) $('bookTitle').textContent += ' — ' + author.trim();
@@ -212,7 +238,8 @@
   }
 
   // ---------- render a section ----------
-  async function show(i, anchor){
+  async function show(i, anchor, keepSpeech){
+    if (!keepSpeech) tts.halt();
     cur = i; store.set(bookKey, String(i));
     const sec = spine[i];
     const raw = await text(sec.href) || '';
@@ -289,6 +316,7 @@
   $('theme').onclick = () => { const d = document.body.classList.toggle('dark'); store.set('epub:dark', d ? '1' : '0'); };
 
   $('close').onclick = () => {
+    tts.close();
     Object.values(blobCache).forEach(URL.revokeObjectURL); blobCache = {};
     $('reader').style.display = 'none'; $('drop').style.display = 'flex'; $('file').value = '';
     document.title = 'EPUB Reader';
@@ -300,6 +328,158 @@
     if (e.key === 'ArrowLeft') $('prev').click();
     if (e.key === 'Escape') toggleToc(false);
   });
+
+  // ---------- read aloud (browser speech synthesis) ----------
+  const tts = (() => {
+    const synth = window.speechSynthesis;
+    const noop = { halt(){}, close(){} };
+    if (!synth || !window.SpeechSynthesisUtterance){ $('speak').style.display = 'none'; return noop; }
+
+    let queue = [], pos = 0, playing = false, session = 0, utter = null, voices = [];
+    const SKIP = 'rt,rp,script,style,noscript,svg,math';
+
+    // Split the visible page into blocks (paragraphs, headings, list items…) in reading order.
+    function blocks(){
+      const page = $('page'), map = new Map(), order = [];
+      page.querySelectorAll('.tts-block').forEach(e => e.classList.remove('tts-block'));
+      const w = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
+      for (let n; (n = w.nextNode()); ){
+        if (!n.nodeValue.trim() || n.parentElement.closest(SKIP)) continue;
+        let el = n.parentElement;
+        while (el !== page && /^(inline|contents|ruby)/.test(getComputedStyle(el).display)) el = el.parentElement;
+        if (!map.has(el)){ map.set(el, []); order.push(el); }
+        map.get(el).push(n.nodeValue);
+      }
+      return order.map(el => {
+        if (el !== page) el.classList.add('tts-block');
+        return { el, text: map.get(el).join('').replace(/\s+/g, ' ').trim() };
+      });
+    }
+    // Short utterances: long ones get cut off in Chrome, and short ones make pause/resume precise.
+    function chunks(t){
+      const parts = t.match(/[^。！？!?；;.…]+[。！？!?；;.…]*["'”’」』）)\]]*\s*/g) || [t];
+      const out = []; let buf = '';
+      const push = s => { for (; s.length > 220; s = s.slice(220)) out.push(s.slice(0, 220)); return s; };
+      for (const p of parts){
+        if (buf && (buf + p).length > 200){ out.push(buf); buf = ''; }
+        buf = push(buf + p);
+      }
+      if (buf.trim()) out.push(buf);
+      return out.map(s => s.trim()).filter(Boolean);
+    }
+    function build(){
+      queue = [];
+      blocks().forEach(b => chunks(b.text).forEach(text => queue.push({ el: b.el, text })));
+    }
+
+    function langOf(t){
+      if (/[\u3040-\u30ff]/.test(t)) return 'ja-JP';
+      if (/[\uac00-\ud7af]/.test(t)) return 'ko-KR';
+      if (/[\u4e00-\u9fff]/.test(t)) return /^zh/i.test(bookLang) ? bookLang : 'zh-CN';
+      if (/[\u0400-\u04ff]/.test(t)) return /^(ru|uk|bg|sr|be|kk|mk)/i.test(bookLang) ? bookLang : 'ru-RU';
+      return bookLang && !/^(zh|ja|ko)/i.test(bookLang) ? bookLang : 'en-US';
+    }
+    function loadVoices(){
+      voices = synth.getVoices();
+      const sel = $('ttsVoice'), keep = store.get('epub:voice') || '';
+      sel.length = 1;
+      voices.slice().sort((a, b) => a.lang.localeCompare(b.lang) || a.name.localeCompare(b.name)).forEach(v => {
+        const o = document.createElement('option');
+        o.value = v.name; o.textContent = v.lang + ' · ' + v.name.replace(/^(Microsoft|Google) /, '');
+        sel.appendChild(o);
+      });
+      sel.value = voices.some(v => v.name === keep) ? keep : '';
+    }
+    loadVoices();
+    if (synth.addEventListener) synth.addEventListener('voiceschanged', loadVoices);
+
+    function mark(el){
+      document.querySelectorAll('.tts-cur').forEach(e => e.classList.remove('tts-cur'));
+      if (!el || el === $('page')) return;
+      el.classList.add('tts-cur');
+      const r = el.getBoundingClientRect();
+      if (r.top < 70 || r.bottom > innerHeight - 130) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function msg(t){ $('ttsMsg').textContent = t || ''; $('ttsMsg').style.display = t ? 'block' : 'none'; }
+    function ui(){ $('ttsPlay').textContent = playing ? '❚❚' : '▶'; $('ttsPlay').title = playing ? 'Pause' : 'Play'; }
+
+    function speak(){
+      const my = ++session;
+      synth.cancel();
+      if (pos >= queue.length) return pageDone(my);
+      const item = queue[pos];
+      const u = utter = new SpeechSynthesisUtterance(item.text);   // keep a reference so it isn't garbage-collected
+      const lang = langOf(item.text);
+      const picked = voices.find(v => v.name === $('ttsVoice').value);
+      if (picked){ u.voice = picked; u.lang = picked.lang; }
+      else {
+        u.lang = lang;
+        const pre = lang.slice(0, 2).toLowerCase();
+        const v = voices.find(v => v.lang.replace('_', '-').toLowerCase() === lang.toLowerCase() && v.localService)
+               || voices.find(v => v.lang.toLowerCase().startsWith(pre) && v.localService)
+               || voices.find(v => v.lang.toLowerCase().startsWith(pre));
+        if (v) u.voice = v;
+      }
+      u.rate = parseFloat($('ttsRate').value) || 1;
+      u.onend = () => { if (my === session && playing){ pos++; speak(); } };
+      u.onerror = e => {
+        if (my !== session || e.error === 'interrupted' || e.error === 'canceled') return;
+        if (e.error === 'not-allowed'){ playing = false; ui(); msg('Tap ▶ to start reading.'); return; }
+        pos++; speak();                                            // skip a chunk the voice can't read
+      };
+      mark(item.el); msg('');
+      setTimeout(() => { if (my === session && playing) synth.speak(u); }, 60);   // let cancel() settle first
+    }
+    async function pageDone(my){
+      if ($('ttsAuto').checked && cur < spine.length - 1){
+        await show(cur + 1, null, true);
+        if (my !== session || !playing) return;
+        build(); pos = 0; speak();
+      } else {
+        playing = false; pos = 0; mark(null); ui();
+      }
+    }
+
+    function play(from){
+      build();
+      if (typeof from === 'number') pos = from;
+      if (pos >= queue.length) pos = 0;
+      if (!queue.length && !($('ttsAuto').checked && cur < spine.length - 1)){ msg('There is no text on this page to read.'); return; }
+      playing = true; ui(); speak();
+    }
+    function pause(){ playing = false; session++; synth.cancel(); ui(); }      // resumes from the same sentence
+    function halt(){ pause(); pos = 0; queue = []; mark(null); msg(''); }      // page changed
+    function close(){ halt(); document.body.classList.remove('tts-on'); }
+
+    $('speak').onclick = () => {
+      if (document.body.classList.contains('tts-on')) return close();
+      document.body.classList.add('tts-on'); play(0);
+    };
+    $('ttsPlay').onclick = () => playing ? pause() : play();
+    $('ttsStop').onclick = close;
+    $('ttsRate').value = store.get('epub:rate') || '1';
+    if (!$('ttsRate').value) $('ttsRate').value = '1';
+    $('ttsRate').onchange = () => { store.set('epub:rate', $('ttsRate').value); if (playing) speak(); };
+    $('ttsVoice').onchange = () => { store.set('epub:voice', $('ttsVoice').value); if (playing) speak(); };
+    $('ttsAuto').checked = store.get('epub:auto') !== '0';
+    $('ttsAuto').onchange = () => store.set('epub:auto', $('ttsAuto').checked ? '1' : '0');
+
+    // While the panel is open, click any paragraph to start reading from there.
+    $('page').addEventListener('click', e => {
+      if (!document.body.classList.contains('tts-on') || e.target.closest('a') || String(getSelection())) return;
+      build();
+      const el = e.target.closest('.tts-block'); if (!el) return;
+      const i = queue.findIndex(q => q.el === el);
+      if (i >= 0){ pos = i; playing = true; ui(); speak(); }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key !== ' ' || !document.body.classList.contains('tts-on') || /^(BUTTON|SELECT|INPUT)$/.test(e.target.tagName)) return;
+      e.preventDefault(); $('ttsPlay').click();
+    });
+    addEventListener('pagehide', () => synth.cancel());
+    synth.cancel();                                                // clear anything left over from a reload
+    return { halt, close };
+  })();
 
   // ---------- file input / drag-drop ----------
   $('file').onchange = e => e.target.files[0] && openFile(e.target.files[0]);
